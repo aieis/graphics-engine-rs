@@ -60,7 +60,7 @@ impl VkBase {
         let shader_registry = ShaderRegistry::new(&device, asset_dir);
 
         let graphics_pipelines: Vec<_> = (0..shader_registry.static_shaders.len()).map(|i| {
-            VkBase::create_graphics_pipeline_impl(&device, &swapchain, &render_pass, global_descriptor_set_layout, &shader_registry, i, None)
+            VkBase::create_graphics_pipeline_impl(&device, &swapchain, &render_pass, global_descriptor_set_layout, &shader_registry, i, descriptor_pool, None)
         }).collect();
 
         Self {
@@ -233,7 +233,7 @@ impl VkBase {
     }
 
     pub fn recreate_graphics_pipeline(&mut self, graphics_pipeline: GraphicsPipelineBundle) -> GraphicsPipelineBundle {
-        return VkBase::create_graphics_pipeline_impl(&self.device, &self.swapchain, &self.render_pass, self.global_descriptor_set_layout, &self.shader_registry, graphics_pipeline.id, graphics_pipeline.ubo);
+        return VkBase::create_graphics_pipeline_impl(&self.device, &self.swapchain, &self.render_pass, self.global_descriptor_set_layout, &self.shader_registry, graphics_pipeline.id, self.descriptor_pool, graphics_pipeline.ubo);
     }
 
     pub fn recreate_swapchain(&mut self) {
@@ -323,7 +323,8 @@ impl VkBase {
                 let new_pso = VkBase::create_graphics_pipeline_impl(
                     &self.device, &self.swapchain, &self.render_pass, self.global_descriptor_set_layout, &self.shader_registry,
                     pso.id,
-                    pso.ubo
+                    self.descriptor_pool,
+                    pso.ubo,
                 );
 
                 unsafe {
@@ -561,20 +562,48 @@ impl VkBase {
     }
 
     /* Setup the graphics pipeline */
-    pub fn create_graphics_pipeline_impl(device: &DeviceBundle, swapchain: &SwapchainBundle, renderpass: &vk::RenderPass, global_descriptor_set_layout: vk::DescriptorSetLayout, shader_registry: &ShaderRegistry, shader_id: usize, ubo: Option<Vec<vk::DescriptorSetLayout>>) -> GraphicsPipelineBundle {
+    pub fn create_graphics_pipeline_impl(
+        device: &DeviceBundle,
+        swapchain: &SwapchainBundle,
+        renderpass: &vk::RenderPass,
+        global_descriptor_set_layout: vk::DescriptorSetLayout,
+        shader_registry: &ShaderRegistry,
+        shader_id: usize,
+        descriptor_pool: vk::DescriptorPool,
+        ubo: Option<GraphicsPipelineDescSetData>) -> GraphicsPipelineBundle {
 
         let pipeline_desc = &shader_registry.static_shaders[shader_id].details.descriptor;
         let use_global    =  shader_registry.static_shaders[shader_id].details.global_uniforms;
 
-        let ubo = if ubo.is_some() || pipeline_desc.ubo_layout_bindings.len() == 0 { ubo } else {
-            let local = Self::create_descriptor_set_layout(device, &pipeline_desc.ubo_layout_bindings);
-            if use_global {
-                Some(vec![global_descriptor_set_layout, local])
-            } else {
-                Some(vec![local])
-            }
-        };
+        let ubo = match ubo {
+            Some(ubo) => Some(ubo),
+            None => {
 
+                let mut layouts = vec![];
+
+                if use_global {
+                    layouts.push(global_descriptor_set_layout);
+                }
+
+
+                let sets: Vec<vk::DescriptorSet>;
+                if pipeline_desc.ubo_layout_bindings.len() > 0 {
+                    let local_layout = Self::create_descriptor_set_layout(device, &pipeline_desc.ubo_layout_bindings);
+                    sets = Self::create_descriptor_sets(device, descriptor_pool, local_layout, swapchain.images.len());
+                    layouts.push(local_layout);
+                } else {
+                    sets = vec![];
+                }
+
+
+                Some ( GraphicsPipelineDescSetData {
+                    has_global_layout: use_global,
+                    layouts,
+                    sets,
+                })
+
+            },
+        };
 
         let shader_vert = shader_registry.static_shaders[shader_id].vert_module;
         let shader_frag = shader_registry.static_shaders[shader_id].frag_module;
@@ -671,7 +700,7 @@ impl VkBase {
         let layout_create_info = match ubo.as_ref() {
             Some(ubo) => {
                 vk::PipelineLayoutCreateInfo::default()
-                    .set_layouts(&ubo)
+                    .set_layouts(&ubo.layouts)
             },
 
             None => vk::PipelineLayoutCreateInfo::default()
@@ -702,8 +731,7 @@ impl VkBase {
             id: shader_id,
             graphics: graphics_pipelines[0],
             layout: pipeline_layout,
-            ubo,
-            pipeline_desc: pipeline_desc.clone()
+            ubo
         }
     }
 
@@ -1024,11 +1052,10 @@ impl Drop for VkBase {
             self.cleanup_in_flight_buffers();
 
             for i in 0..self.graphics_pipelines.len() {
-                let shader_id = self.graphics_pipelines[i].id;
                 if let Some(ubo) = self.graphics_pipelines[i].ubo.as_ref() {
                     // The first ubo will always be the global uniform if it has been requested
-                    let idx = if self.shader_registry.static_shaders[shader_id].details.global_uniforms { 1 } else { 0 };
-                    for ubo_elem in ubo[idx..].iter() {
+                    let idx = if ubo.has_global_layout { 1 } else { 0 };
+                    for ubo_elem in ubo.layouts[idx..].iter() {
                         self.device.logical.destroy_descriptor_set_layout(*ubo_elem, None)
                     }
                 }

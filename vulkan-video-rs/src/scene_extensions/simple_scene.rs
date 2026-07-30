@@ -7,7 +7,7 @@ use winit::keyboard::KeyCode;
 use crate::geometry::vec3::Vec3;
 use crate::mesh::prism;
 use crate::rhi::allocator::{Allocator, BufferType};
-use crate::vk_bundles::{BufferBundle, DeviceBundle};
+use crate::vk_bundles::BufferBundle;
 use crate::{drawable::drawable_mesh::DrawableMesh, vk_base::VkBase};
 use crate::shader::ShaderSpecialMesh;
 
@@ -24,8 +24,6 @@ pub struct SimpleScene
 
     pub static_meshes  : Vec<DrawableMesh>,
     pub dynamic_meshes : Vec<DrawableMesh>,
-
-    pub descriptor_sets: Vec<vk::DescriptorSet>,
 
     staging: BufferBundle,
     uniform: BufferBundle,
@@ -66,9 +64,10 @@ impl SimpleScene
         let staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<SpecialMeshShaderParams>() as u64).unwrap();
         let uniform = allocator.alloc(BufferType::Uniform, std::mem::size_of::<SpecialMeshShaderParams>() as u64).unwrap();
 
-        let descriptor_sets = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, base.graphics_pipelines[ShaderSpecialMesh::ID].ubo.as_ref().unwrap()[1], base.max_in_flight);
-        for descriptor_set in descriptor_sets.iter() {
-            VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&uniform], 0);
+        if let Some(ubo) = base.graphics_pipelines[ShaderSpecialMesh::ID].ubo.as_ref() {
+            for descriptor_set in ubo.sets.iter() {
+                VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&uniform], 0);
+            }
         }
 
         let time = Instant::now();
@@ -80,8 +79,6 @@ impl SimpleScene
             dynamic_meshes,
             staging,
             uniform,
-
-            descriptor_sets,
             use_global_camera: false,
             going_down: false,
             translation_amount: 0.0,
@@ -176,8 +173,16 @@ impl SimpleScene
             base.device.logical.cmd_bind_descriptor_sets(*cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0, &[global_descriptor_set], &[]);
         }
 
+        let empty_desc_sets = [];
+
+        let sets = match &base.graphics_pipelines[ShaderSpecialMesh::ID].ubo {
+            Some(ubo) => &ubo.sets[current_image..current_image+1],
+            None => &empty_desc_sets,
+        };
+
         for scene in scenes {
-            let sets = &scene.descriptor_sets[current_image..current_image+1];
+            //TODO: Should update the descriptor sets here, but ehh
+
             unsafe {
                 base.device.logical.cmd_bind_descriptor_sets(*cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 1, sets, &[]);
             }

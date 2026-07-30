@@ -45,7 +45,7 @@ void main() {
     if (S.GlobalCamera > 0) {
         camera_pos = G.CamPos;
         camera_dir = G.CamDir;
-        // camera_up  = G.CamUp;
+        camera_up  = G.CamUp;
     }
 
     float FOV   = PI / 4;

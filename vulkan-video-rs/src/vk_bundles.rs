@@ -38,12 +38,17 @@ pub struct PipelineDescriptor {
     pub vertex_attributes: Vec<vk::VertexInputAttributeDescription>
 }
 
+pub struct GraphicsPipelineDescSetData {
+    pub has_global_layout: bool,
+    pub layouts: Vec<vk::DescriptorSetLayout>,
+    pub sets: Vec<vk::DescriptorSet>,
+}
+
 pub struct GraphicsPipelineBundle {
     pub id: usize,
     pub graphics: vk::Pipeline,
     pub layout: vk::PipelineLayout,
-    pub ubo: Option<Vec<vk::DescriptorSetLayout>>,
-    pub pipeline_desc: PipelineDescriptor
+    pub ubo: Option<GraphicsPipelineDescSetData>,
 }
 
 pub struct SyncObjectsBundle {

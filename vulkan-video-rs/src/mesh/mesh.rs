@@ -1,4 +1,4 @@
-use crate::geometry::vec3::{self, Vec3};
+use crate::geometry::vec3::Vec3;
 
 pub struct Mesh {
     pub center: Vec3,

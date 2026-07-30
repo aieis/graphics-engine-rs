@@ -2,6 +2,7 @@ use ash::vk;
 
 use crate::mesh::Rect;
 use crate::utils::image::{copy_buffer_to_image, transition_image_layout, ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined};
+use crate::vk_base::VkBase;
 use crate::vk_bundles::BufferBundle;
 use crate::{utils, DeviceBundle, GraphicsPipelineBundle, TextureBundle};
 use crate::primitives::texture2d::Texture2d;
@@ -14,16 +15,11 @@ pub struct DrawableTexture {
     pub vbo: BufferBundle,
     pub ind: BufferBundle,
     pub coords: BufferBundle,
-    pub desc_set: Vec<vk::DescriptorSet>,
 }
 
 impl DrawableTexture {
 
-    pub fn new(
-        device: &DeviceBundle, descriptor_pool: vk::DescriptorPool, command_buffer: vk::CommandBuffer,
-        desc_layout: vk::DescriptorSetLayout, swapchain_image_size: usize,
-        rect: Rect, texture_data: Texture2d
-    ) -> Self {
+    pub fn new( device: &DeviceBundle, command_buffer: vk::CommandBuffer, rect: Rect, texture_data: Texture2d ) -> Self {
 
         let texture = utils::image::create_texture_image(device, texture_data.width, texture_data.height, texture_data.size, texture_data.format);
 
@@ -42,9 +38,8 @@ impl DrawableTexture {
         let usage = vk::BufferUsageFlags::INDEX_BUFFER;
         let ind = utils::buffer::create_buffer(device, coord_mesh.size_vrt() as u64, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
-        let desc_set = Self::create_descriptor_sets(device, descriptor_pool, desc_layout, &texture, swapchain_image_size);
         transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(device, command_buffer, &texture);
-        DrawableTexture { rect, texture_data, texture, vbo, coords, ind, desc_set }
+        DrawableTexture { rect, texture_data, texture, vbo, coords, ind }
     }
 
     pub fn dirty(&self) -> bool {
@@ -102,63 +97,39 @@ impl DrawableTexture {
         return recorded;
     }
 
-    pub fn draw(device: &DeviceBundle, command_buffer: vk::CommandBuffer, graphics_pipeline: &GraphicsPipelineBundle, current_swap_image: usize, entities: &[Self])  {
+    pub fn draw(device: &DeviceBundle, command_buffer: vk::CommandBuffer, pso: &GraphicsPipelineBundle, current_swap_image: usize, entities: &[Self])  {
+
         unsafe {
-            device.logical.cmd_bind_pipeline(command_buffer, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.graphics);
-            for i in 0..entities.len() {
-                device.logical.cmd_bind_vertex_buffers(command_buffer, 0, &[entities[i].vbo.buffer, entities[i].coords.buffer], &[0, 0]);
-                device.logical.cmd_bind_index_buffer(command_buffer, entities[i].ind.buffer, 0, vk::IndexType::UINT16);
+            device.logical.cmd_bind_pipeline(command_buffer, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
+        }
 
-                device.logical.cmd_bind_descriptor_sets(
-                    command_buffer, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.layout, 0,
-                    &entities[i].desc_set[current_swap_image..current_swap_image+1], &[]);
+        //TODO: FIX THIS PARADIGM
+        match &pso.ubo {
+            Some(ubo) => {
+                unsafe {
+                    let set = &ubo.sets[current_swap_image..current_swap_image+1];
 
-                device.logical.cmd_draw_indexed(command_buffer, entities[i].rect.indices.len() as u32, 1, 0, 0, 0);
+                    for i in 0..entities.len() {
+
+                        VkBase::update_descriptor_set_textures(&device, set[0], &[&entities[i].texture], 0);
+
+                        device.logical.cmd_bind_vertex_buffers(command_buffer, 0, &[entities[i].vbo.buffer, entities[i].coords.buffer], &[0, 0]);
+                        device.logical.cmd_bind_index_buffer(command_buffer, entities[i].ind.buffer, 0, vk::IndexType::UINT16);
+
+                        device.logical.cmd_bind_descriptor_sets(
+                            command_buffer, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0,
+                            &set, &[]);
+
+                        device.logical.cmd_draw_indexed(command_buffer, entities[i].rect.indices.len() as u32, 1, 0, 0, 0);
+                    }
+                }
             }
-        }
-    }
 
-    fn create_descriptor_sets(
-        device: &DeviceBundle,
-        descriptor_pool: vk::DescriptorPool,
-        descriptor_set_layout: vk::DescriptorSetLayout,
-        texture: &TextureBundle,
-        swapchain_images_size: usize,
-    ) -> Vec<vk::DescriptorSet> {
-        let mut layouts: Vec<vk::DescriptorSetLayout> = vec![];
-        for _ in 0..swapchain_images_size {
-            layouts.push(descriptor_set_layout);
-        }
 
-        let descriptor_set_allocate_info = vk::DescriptorSetAllocateInfo::default()
-            .descriptor_pool(descriptor_pool)
-            .set_layouts(&layouts);
-
-        let descriptor_sets = unsafe { device.logical.allocate_descriptor_sets(&descriptor_set_allocate_info).unwrap() };
-
-        for &descriptor_set in descriptor_sets.iter() {
-            let descriptor_image_infos = [vk::DescriptorImageInfo {
-                sampler: texture.sampler,
-                image_view: texture.image_view,
-                image_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-            }];
-
-            let descriptor_write_sets = [
-                vk::WriteDescriptorSet::default()
-                    .dst_set(descriptor_set)
-                    .dst_binding(0)
-                    .dst_array_element(0)
-                    .descriptor_count(1)
-                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                    .image_info(&descriptor_image_infos)
-            ];
-
-            unsafe {
-                device.logical.update_descriptor_sets(&descriptor_write_sets, &[]);
+            None => {
+                panic!("ERROR: NO DESCRIPTOR SETS WHEN ONE IS EXPECTED");
             }
-        }
-
-        descriptor_sets
+        };
 
     }
 

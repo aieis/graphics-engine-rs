@@ -114,10 +114,9 @@ impl App {
         //TODO: Cleanup descriptor pool
 
         let cb = begin_single_time_command(&base.device, base.spare_command.pool);
-        let ubo = base.graphics_pipelines[ShaderTexture::ID].ubo.as_ref().unwrap();
 
         let textures = vec![
-            DrawableTexture::new(&base.device, base.descriptor_pool,  cb, ubo[0], base.swapchain.images.len(), Rect::new(-1.0, -1.0, 2.0, 2.0, [1.0, 1.0, 1.0]), texture)
+            DrawableTexture::new(&base.device, cb, Rect::new(-1.0, -1.0, 2.0, 2.0, [1.0, 1.0, 1.0]), texture)
         ];
 
         end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
