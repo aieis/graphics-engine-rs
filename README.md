@@ -1,6 +1,6 @@
 # Overview
 
-Rust project for graphics and rendering in vulkan
+Rust project for graphics and rendering in vulkan. 
 
 # Build the shaders
 
