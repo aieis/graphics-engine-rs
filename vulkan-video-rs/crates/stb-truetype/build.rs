@@ -25,8 +25,7 @@ fn main() {
     }
 
     cc::Build::new()
-        .file(cargo_manifest_dir.join("./src/stb_truetype.h"))
-        .define("STB_TRUETYPE_IMPLEMENTATION", "1")
+        .file(cargo_manifest_dir.join("./src/stb_truetype_compile.c"))
         .compile("stb_truetype_rs");
 
     // // link the libraries specified by pkg-config.
