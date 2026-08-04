@@ -203,6 +203,53 @@ impl ShaderTexture {
     }
 }
 
+#[register_shader("text")]
+pub struct ShaderText {}
+
+impl ShaderText {
+    const GLOBAL_UNIFORMS: bool = false;
+
+    pub fn pipeline_descriptor() -> PipelineDescriptor {
+        let ubo_layout_bindings = vec![
+            DescSetBinding {
+                binding: 0,
+                descriptor_type: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                descriptor_count: 1,
+                stage_flags: vk::ShaderStageFlags::FRAGMENT,
+            }
+        ];
+
+        let vertex_bindings = vec![
+            vk::VertexInputBindingDescription::default()
+                .binding(0)
+                .stride(std::mem::size_of::<[f32; 2]>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+
+            vk::VertexInputBindingDescription::default()
+                .binding(1)
+                .stride(std::mem::size_of::<[f32; 2]>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX)
+        ];
+
+        let vertex_attributes = vec![
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32G32_SFLOAT),
+            vk::VertexInputAttributeDescription::default()
+                .binding(1)
+                .location(1)
+                .format(vk::Format::R32G32_SFLOAT)
+        ];
+
+        PipelineDescriptor {
+            ubo_layout_bindings,
+            vertex_bindings,
+            vertex_attributes,
+        }
+    }
+}
+
 pub struct StaticShader {
     pub vert_path: PathBuf,
     pub frag_path: PathBuf,

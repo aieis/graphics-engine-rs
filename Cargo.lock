@@ -468,6 +468,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "farbfeld-image"
+version = "0.1.0"
+
+[[package]]
 name = "fdeflate"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1340,6 +1344,7 @@ version = "0.1.0"
 dependencies = [
  "bindgen",
  "cc",
+ "farbfeld-image",
 ]
 
 [[package]]
