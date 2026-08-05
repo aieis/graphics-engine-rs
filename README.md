@@ -2,6 +2,10 @@
 
 Rust project for graphics and rendering in vulkan. 
 
+# Dependencies
+
+This project uses glslc to compile the shaders. It must exist on your path otherwise compilation will likely fail.
+
 # Build the shaders
 
 glslc -c  assets/shaders/shader.frag assets/shaders/shader.vert

@@ -240,28 +240,9 @@ impl ShaderText {
             }
         ];
 
-        let vertex_bindings = vec![
-            vk::VertexInputBindingDescription::default()
-                .binding(0)
-                .stride(std::mem::size_of::<[f32; 2]>() as u32)
-                .input_rate(vk::VertexInputRate::VERTEX),
+        let vertex_bindings = vec![ ];
 
-            vk::VertexInputBindingDescription::default()
-                .binding(1)
-                .stride(std::mem::size_of::<[f32; 2]>() as u32)
-                .input_rate(vk::VertexInputRate::VERTEX)
-        ];
-
-        let vertex_attributes = vec![
-            vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(0)
-                .format(vk::Format::R32G32_SFLOAT),
-            vk::VertexInputAttributeDescription::default()
-                .binding(1)
-                .location(1)
-                .format(vk::Format::R32G32_SFLOAT)
-        ];
+        let vertex_attributes = vec![ ];
 
         PipelineDescriptor {
             ubo_layout_bindings,

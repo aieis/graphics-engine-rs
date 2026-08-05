@@ -10,8 +10,8 @@ use crate::mesh::prism;
 use crate::primitives::texture2d::PixelFormat;
 use crate::rhi::allocator::{Allocator, BufferType};
 use crate::utils;
-use crate::utils::image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal};
-use crate::vk_bundles::{BufferBundle, TextureBundle};
+use crate::utils::image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined};
+use crate::vk_bundles::BufferBundle;
 use crate::{drawable::drawable_mesh::DrawableMesh, vk_base::VkBase};
 use crate::shader::ShaderSpecialMesh;
 
@@ -29,7 +29,7 @@ pub struct SimpleScene
     pub static_meshes  : Vec<DrawableMesh>,
     pub dynamic_meshes : Vec<DrawableMesh>,
 
-    frame_timer: [DrawableText; 1],
+	frame_timer: [DrawableText; 1],
 
     staging: BufferBundle,
     uniform: BufferBundle,
@@ -181,15 +181,15 @@ impl SimpleScene
 
                     // TODO: This should only happen the once at the top
                     let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
-                    
+
                     let size = scene.frame_timer[0].texture.staging.size;
                     let data_ptr = base.device.logical.map_memory(scene.frame_timer[0].texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                    data_ptr.copy_from_nonoverlapping(scene.frame_timer[0].texture_data.data.as_ptr(), size as usize);
-                    device.logical.unmap_memory(scene.frame_timer[0].texture.staging.memory);
+                    data_ptr.copy_from_nonoverlapping(atlas.data.as_ptr(), size as usize);
+                    base.device.logical.unmap_memory(scene.frame_timer[0].texture.staging.memory);
 
-                    utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(device, command_buffer, &scene.frame_timer[0].texture);
-                    utils::image::copy_buffer_to_image(device, command_buffer, &scene.frame_timer[0].texture, scene.frame_timer[0].texture.staging.buffer, scene.frame_timer[0].texture_data.width, scene.frame_timer[0].texture_data.height);
-                    transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(device, command_buffer, &scene.frame_timer[0].texture);
+                    utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
+                    utils::image::copy_buffer_to_image(&base.device, *cb, &scene.frame_timer[0].texture, scene.frame_timer[0].texture.staging.buffer, atlas.w, atlas.h);
+                    utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
                 }
 
                 scene.initialized = true;
