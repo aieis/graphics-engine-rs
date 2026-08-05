@@ -19,7 +19,7 @@ fn main() {
 		if !extension_is(&file, OsStr::new("vert")) && !extension_is(&file, OsStr::new("frag")) {
 			continue;
 		}
-		
+
 		let target_spv_file = append_to_path(file.clone(), ".spv");
 
 		if !target_spv_file.exists() {
@@ -29,7 +29,7 @@ fn main() {
 			cmd.arg(&file)
 				.arg("-o")
 				.arg(&target_spv_file);
-			
+
 			match cmd.spawn() {
 				Ok(_) => println!("cargo:info=Shader built successfully: {:?}.", &file),
 				Err(err) => println!("cargo:warning=Failed to build shader: {:?} \n\t {}", &file, err),
@@ -77,5 +77,5 @@ fn extension_is(p: &Path, s: &OsStr) -> bool {
 		Some(ext) => ext == s,
 		None => s == ""
 	}
-	
+
 }
