@@ -114,11 +114,11 @@ impl VkBase {
         let wait_fences = [self.sync_objects.in_flight_fences[self.current_frame]];
 
         let (image_index, _is_sub_optimal) = unsafe {
-            self.device.logical.wait_for_fences(&wait_fences, true, std::u64::MAX)
+            self.device.logical.wait_for_fences(&wait_fences, true, u64::MAX)
                 .expect("Failed to wait for Fence!");
 
             let result = self.swapchain.loader.acquire_next_image(
-                self.swapchain.swapchain, std::u64::MAX,
+                self.swapchain.swapchain, u64::MAX,
                 self.sync_objects.image_available_semaphores[self.current_frame],
                 vk::Fence::null());
 
@@ -168,7 +168,7 @@ impl VkBase {
             self.device.logical.cmd_begin_render_pass(cb, &render_pass_begin_info, vk::SubpassContents::INLINE);
         }
 
-        return Some((cb, image_index));
+        Some((cb, image_index))
     }
 
 
@@ -233,7 +233,7 @@ impl VkBase {
     }
 
     pub fn recreate_graphics_pipeline(&mut self, graphics_pipeline: GraphicsPipelineBundle) -> GraphicsPipelineBundle {
-        return VkBase::create_graphics_pipeline_impl(&self.device, &self.swapchain, &self.render_pass, self.global_descriptor_set_layout, &self.shader_registry, graphics_pipeline.id, self.descriptor_pool, graphics_pipeline.ubo);
+        VkBase::create_graphics_pipeline_impl(&self.device, &self.swapchain, &self.render_pass, self.global_descriptor_set_layout, &self.shader_registry, graphics_pipeline.id, self.descriptor_pool, graphics_pipeline.ubo)
     }
 
     pub fn recreate_swapchain(&mut self) {
@@ -500,7 +500,7 @@ impl VkBase {
             .find(|&mode| mode == vk::PresentModeKHR::MAILBOX)
             .unwrap_or(vk::PresentModeKHR::FIFO);
 
-        let swapchain_loader = khr::swapchain::Device::new(&instance, &device.logical);
+        let swapchain_loader = khr::swapchain::Device::new(instance, &device.logical);
 
         let swapchain_create_info = vk::SwapchainCreateInfoKHR::default()
             .surface(surface.surface)

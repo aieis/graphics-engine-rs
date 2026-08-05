@@ -3,7 +3,7 @@ use std::{ffi::OsStr, path::{Path, PathBuf}};
 fn main() {
     let cargo_manifest_dir: PathBuf = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").unwrap());
 
-	if let Err(_) = std::process::Command::new("glslc").spawn() {
+	if std::process::Command::new("glslc").spawn().is_err() {
 		println!("cargo:warning=Could not spawn glslc. You may not be able to use the program without it.");
 		return;
 	}
@@ -48,10 +48,8 @@ fn read_files(path: &Path) -> Vec<PathBuf> {
 	match std::fs::read_dir(path) {
 		Ok(path_results) => {
 			let mut paths = Vec::new();
-			for path in path_results {
-				if let Ok(path) = path {
-					paths.push(path.path());
-				}
+			for path in path_results.flatten() {
+				paths.push(path.path());
 			}
 
 			paths
@@ -75,7 +73,7 @@ fn extension_is(p: &Path, s: &OsStr) -> bool {
 
 	match p.extension() {
 		Some(ext) => ext == s,
-		None => s == ""
+		None => s.is_empty()
 	}
 
 }
