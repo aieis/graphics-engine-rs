@@ -13,5 +13,5 @@ void main()
 {
     vec4 color = texture(FontAtlas, TexCoord);
 
-    FragColor = vec4(0, 0, 0, color.a);
+    FragColor = vec4(1, 1, color.w, color.w);
 }

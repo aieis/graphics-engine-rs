@@ -9,7 +9,6 @@ use ash::vk;
 use winit::{raw_window_handle::{HasDisplayHandle, HasWindowHandle}, window::Window};
 
 
-
 pub struct VkBase {
     pub _entry: ash::Entry,
     pub instance: ash::Instance,

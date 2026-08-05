@@ -159,7 +159,7 @@ impl DrawableText {
                             cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0,
                             &set, &[]);
 
-                        device.logical.cmd_draw(cb, entities[i].text.len() as u32 * 4, 1, 0, 0);
+                        device.logical.cmd_draw(cb, entities[i].text.len() as u32 * 6, 1, 0, 0);
                     }
                 }
             }

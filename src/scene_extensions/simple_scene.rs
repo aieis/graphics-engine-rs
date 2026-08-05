@@ -13,7 +13,7 @@ use crate::utils;
 use crate::utils::image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined};
 use crate::vk_bundles::BufferBundle;
 use crate::{drawable::drawable_mesh::DrawableMesh, vk_base::VkBase};
-use crate::shader::ShaderSpecialMesh;
+use crate::shader::{ShaderSpecialMesh, ShaderText};
 
 #[repr(C)]
 struct SpecialMeshShaderParams {
@@ -181,13 +181,16 @@ impl SimpleScene
 
                     // TODO: This should only happen the once at the top
                     let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
+					println!("Atlas: {:?}", &atlas.data[0..4]);
 
                     let size = scene.frame_timer[0].texture.staging.size;
                     let data_ptr = base.device.logical.map_memory(scene.frame_timer[0].texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
                     data_ptr.copy_from_nonoverlapping(atlas.data.as_ptr(), size as usize);
                     base.device.logical.unmap_memory(scene.frame_timer[0].texture.staging.memory);
 
-                    utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
+					utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
+
+                    utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
                     utils::image::copy_buffer_to_image(&base.device, *cb, &scene.frame_timer[0].texture, scene.frame_timer[0].texture.staging.buffer, atlas.w, atlas.h);
                     utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
                 }
@@ -226,6 +229,7 @@ impl SimpleScene
 
             DrawableMesh::draw(&base.device, cb, pso, &scene.static_meshes);
             DrawableMesh::draw(&base.device, cb, pso, &scene.dynamic_meshes);
+			DrawableText::draw(&base.device, *cb, &base.graphics_pipelines[ShaderText::ID], current_image, &scene.frame_timer);
         }
     }
 
