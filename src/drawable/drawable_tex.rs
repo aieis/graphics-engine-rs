@@ -140,12 +140,12 @@ impl DrawableTexture {
             for texture in textures.iter() {
                 device.logical.destroy_buffer(texture.vbo.buffer, None);
                 device.logical.free_memory(texture.vbo.memory, None);
-                device.logical.destroy_buffer(texture.texture.staging.buffer, None);
-                device.logical.free_memory(texture.texture.staging.memory, None);
                 device.logical.destroy_buffer(texture.coords.buffer, None);
                 device.logical.free_memory(texture.coords.memory, None);
                 device.logical.destroy_buffer(texture.ind.buffer, None);
                 device.logical.free_memory(texture.ind.memory, None);
+                device.logical.destroy_buffer(texture.texture.staging.buffer, None);
+                device.logical.free_memory(texture.texture.staging.memory, None);
                 device.logical.destroy_image(texture.texture.resource.image, None);
                 device.logical.free_memory(texture.texture.resource.memory, None);
                 device.logical.destroy_image_view(texture.texture.image_view, None);
