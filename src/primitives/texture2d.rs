@@ -31,8 +31,10 @@ impl Texture2d {
         }
     }
 
-    pub fn update_data(&mut self, data: Vec<u8>) {
-        self.data = data;
-        self.dirty = true;
+    pub fn copy_to_data(&mut self, data: &[u8]) {
+        if data.len() == self.data.len() {
+            self.data.copy_from_slice(data);
+            self.dirty = true;
+        }
     }
 }

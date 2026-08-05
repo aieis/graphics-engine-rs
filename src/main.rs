@@ -203,7 +203,7 @@ impl App {
 
 
         if let Some(new_frame) = self.video_device.poll() {
-            self.textures[0].texture_data.update_data(new_frame);
+            self.textures[0].texture_data.copy_to_data(&new_frame);
         }
 
         DrawableTexture::update(&self.base.device, cb, &mut self.textures);

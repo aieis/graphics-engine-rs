@@ -4,10 +4,14 @@ use ash::vk;
 use winit::event::ElementState;
 use winit::keyboard::KeyCode;
 
+use crate::drawable::drawable_text::DrawableText;
 use crate::geometry::vec3::Vec3;
 use crate::mesh::prism;
+use crate::primitives::texture2d::PixelFormat;
 use crate::rhi::allocator::{Allocator, BufferType};
-use crate::vk_bundles::BufferBundle;
+use crate::utils;
+use crate::utils::image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal};
+use crate::vk_bundles::{BufferBundle, TextureBundle};
 use crate::{drawable::drawable_mesh::DrawableMesh, vk_base::VkBase};
 use crate::shader::ShaderSpecialMesh;
 
@@ -25,12 +29,16 @@ pub struct SimpleScene
     pub static_meshes  : Vec<DrawableMesh>,
     pub dynamic_meshes : Vec<DrawableMesh>,
 
+    frame_timer: [DrawableText; 1],
+
     staging: BufferBundle,
     uniform: BufferBundle,
 
     use_global_camera: bool,
     going_down: bool,
     translation_amount: f32,
+
+    initialized: bool
 }
 
 impl SimpleScene
@@ -72,6 +80,12 @@ impl SimpleScene
 
         let time = Instant::now();
 
+        let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
+
+        let texture = utils::image::create_texture_image(&base.device, atlas.w, atlas.h, (atlas.w * atlas.h * 4) as u64, PixelFormat::RGBA);
+
+        let frame_timer = [DrawableText::new(Vec3::new(0.0, 0.0, 0.0), texture, allocator, "Hello, World!", 64)];
+
 
         Self {
             time,
@@ -82,6 +96,8 @@ impl SimpleScene
             use_global_camera: false,
             going_down: false,
             translation_amount: 0.0,
+            frame_timer,
+            initialized: false,
         }
     }
 
@@ -157,6 +173,27 @@ impl SimpleScene
 
                 base.device.logical.cmd_copy_buffer(*cb, scene.staging.buffer, scene.uniform.buffer, &copy_region);
             }
+
+
+            if !scene.initialized {
+
+                unsafe {
+
+                    // TODO: This should only happen the once at the top
+                    let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
+                    
+                    let size = scene.frame_timer[0].texture.staging.size;
+                    let data_ptr = base.device.logical.map_memory(scene.frame_timer[0].texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                    data_ptr.copy_from_nonoverlapping(scene.frame_timer[0].texture_data.data.as_ptr(), size as usize);
+                    device.logical.unmap_memory(scene.frame_timer[0].texture.staging.memory);
+
+                    utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(device, command_buffer, &scene.frame_timer[0].texture);
+                    utils::image::copy_buffer_to_image(device, command_buffer, &scene.frame_timer[0].texture, scene.frame_timer[0].texture.staging.buffer, scene.frame_timer[0].texture_data.width, scene.frame_timer[0].texture_data.height);
+                    transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(device, command_buffer, &scene.frame_timer[0].texture);
+                }
+
+                scene.initialized = true;
+            }
         }
 
     }
@@ -198,6 +235,7 @@ impl SimpleScene
             scene.dynamic_meshes.clear();
             DrawableMesh::release(&base.device, &mut scene.static_meshes);
             scene.static_meshes.clear();
+            DrawableText::release(&base.device, &mut scene.frame_timer);
         }
     }
 

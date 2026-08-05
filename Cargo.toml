@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 comptime-register-macro = { path = "./crates/comptime-register-macro" }
 stb-truetype = { path = "./crates/stb-truetype" }
+farbfeld-image = { path = "./crates/farbfeld-image/" }
+
 anyhow = "1.0.98"
 ash = { version = "0.38.0", features = ["linked", "debug", "std"] }
 ash-window = "0.13.0"

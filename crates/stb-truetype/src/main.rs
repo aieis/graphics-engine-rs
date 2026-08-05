@@ -40,6 +40,8 @@ fn pack_atlas_sparse() {
         h_c = if c.h > h_c {c.h} else { h_c };
     }
 
+    println!("Character dimensions: {}x{}", w_c, h_c);
+
 
     let w = w_c;
     let h = h_c * 256;
