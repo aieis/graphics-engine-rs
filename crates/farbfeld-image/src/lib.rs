@@ -130,12 +130,14 @@ const fn make_u8_u16_map() -> [u16; 256] {
 mod tests {
     use super::*;
 
+	const TEST_IMAGE_PATH: &str = "./test_output/output.ff";
+
     #[test]
     fn write_load_farbfeld_image()
     {
         std::fs::create_dir("./test_output");
 
-        let path = "./test_output/output.ff";
+        let path = TEST_IMAGE_PATH;
 
         let h = 512 + 64;
         let w = 512 + 64;
@@ -166,16 +168,23 @@ mod tests {
 
         write_ff(path, im);
 
-    match load_ff(path) {
-        Ok(im) => {
-            assert!(im.w as usize == w && im.h as usize == h);
-        }
+		match load_ff(path) {
+			Ok(im) => {
+				assert!(im.w as usize == w && im.h as usize == h);
+			}
 
-        Err(_err) => {
-            assert!(false)
-        }
-    };
+			Err(err) => {
+				assert!(false, "Failed: {}", err);
+			}
+		};
 
     }
+
+	#[test]
+	fn test_reload_rewrite() {
+		write_load_farbfeld_image();
+		let im = load_ff(TEST_IMAGE_PATH).unwrap();
+		write_ff("./test_output/reoutput.ff", im);
+	}
 
 }

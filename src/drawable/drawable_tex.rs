@@ -129,7 +129,7 @@ impl DrawableTexture {
 
                 VkBase::update_descriptor_set_textures(&device, set[0], &[&entities[i].texture], 0);
 
-                device.logical.cmd_bind_vertex_buffers(cb, 0, &[entities[i].vbo.buffer, entities[i].coords.buffer], &[0, 0]);
+                device.logical.cmd_bind_vertex_buffers(cb, 0, &[entities[i].vbo.buffer, entities[i].coords.buffer], &[entities[i].vbo.offset, entities[i].coords.offset]);
                 device.logical.cmd_bind_index_buffer(cb, entities[i].ind.buffer, 0, vk::IndexType::UINT16);
 
                 device.logical.cmd_bind_descriptor_sets(

@@ -43,6 +43,15 @@ impl Rect {
         self.h = self.vertices[2][1] - self.h;
     }
 
+	pub fn refresh_vertices(&mut self) {
+		self.vertices = [
+            [self.x,        self.y],
+            [self.x+self.w, self.y],
+            [self.x+self.w, self.y+self.h],
+            [self.x,        self.y+self.h]
+        ];
+	}
+
     pub const fn size_of_vertices() -> usize {
         std::mem::size_of::<[[f32; 2]; 4]>()
     }

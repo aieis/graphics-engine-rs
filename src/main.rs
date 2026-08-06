@@ -128,8 +128,8 @@ impl App {
         let atlas_texture = Texture2d::new(atlas.data, atlas.w, atlas.h, PixelFormat::RGBA);
 
         let sliding_textures = vec![
-            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.0, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture), 5.0),
-            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.25, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), atlas_texture), 5.0)
+            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.00, -1.0, 0.4, 0.4), Rect::new(0.0, 0.0, 0.2, 0.2), texture), 5.0),
+            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.25, -1.0, 0.4, 0.4), Rect::new(0.0, 0.0, 0.2, 0.2), atlas_texture), 5.0)
         ];
 
         end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
@@ -222,7 +222,6 @@ impl App {
         }
 
         DrawableTexture::update(&self.base.device, cb, &mut self.textures);
-
         SlidingTexture::update(&self.base.device, cb, self.delta_time, &mut self.sliding_textures);
 
         unsafe {
@@ -271,7 +270,7 @@ impl App {
 
         DrawableTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.textures);
         SlidingTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.sliding_textures);
-        
+
         // Drawable2d::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderRect::ID], &self.rect_bundles);
         // DrawableMesh::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderMesh::ID], &self.mesh_bundles);
         let current_image = self.base.current_frame;

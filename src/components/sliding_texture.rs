@@ -24,19 +24,21 @@ impl SlidingTexture {
             let dy = delta_time / entity.sliding_period;
 
             if dy + entity.texture.screen_span.y + entity.texture.screen_span.h > 1.0 {
-                entity.texture.screen_span.y = 0.0;
+                entity.texture.screen_span.y  = -1.0;
                 entity.texture.texture_span.y = 0.0;
             } else {
-                entity.texture.screen_span.y += dy;
-                entity.texture.texture_span.y += 2.0 * dy;
+                entity.texture.screen_span.y  += 2.0 * dy;
+                entity.texture.texture_span.y += dy;
             }
+
+			entity.texture.screen_span.refresh_vertices();
+			entity.texture.texture_span.refresh_vertices();
 
             entity.texture.screen_span_updated = true;
             entity.texture.texture_span_updated = true;
 
             DrawableTexture::update(device, cb, std::slice::from_mut(&mut entity.texture));
         }
-
     }
 
     pub fn draw(device: &DeviceBundle, cb: vk::CommandBuffer, pso: &GraphicsPipelineBundle, current_swap_image: usize, entities: &[Self])  {
@@ -48,7 +50,7 @@ impl SlidingTexture {
 
     pub fn release(device: &DeviceBundle, entities: &mut [Self]) {
         for entity in entities {
-            DrawableTexture::release(device, std::slice::from_mut(&mut entity.texture));            
+            DrawableTexture::release(device, std::slice::from_mut(&mut entity.texture));
         }
     }
 }

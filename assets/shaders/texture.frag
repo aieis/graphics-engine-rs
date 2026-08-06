@@ -11,5 +11,8 @@ layout(location = 0) out vec4 FragColor;
 
 void main()
 {
-    FragColor = texture(Texture, TexCoord);
+    vec4 colour = texture(Texture, TexCoord);
+
+	FragColor = colour; //vec4(colour.a, colour.a, colour.a, 1.0);
+
 }
