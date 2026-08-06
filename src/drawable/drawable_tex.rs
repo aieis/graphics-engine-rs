@@ -1,6 +1,7 @@
 use ash::vk;
 
 use crate::mesh::RECT_INDICES;
+use crate::shader::ShaderTexture;
 use crate::utils::image::{copy_buffer_to_image, transition_image_layout, ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined};
 use crate::vk_base::VkBase;
 use crate::vk_bundles::BufferBundle;
@@ -16,7 +17,7 @@ pub struct DrawableTexture {
     pub vbo: BufferBundle,
     pub ind: BufferBundle,
     pub coords: BufferBundle,
-
+	pub descriptor_sets: Vec<vk::DescriptorSet>,
     pub screen_span_updated: bool,
     pub texture_span_updated: bool,
     pub initialized: bool
@@ -28,7 +29,9 @@ const RECT_SIZE_VRT: u64 = Rect::size_of_vertices() as u64;
 
 impl DrawableTexture {
 
-    pub fn new( device: &DeviceBundle, cb: vk::CommandBuffer, screen_span: Rect, texture_span: Rect, texture_data: Texture2d ) -> Self {
+    pub fn new( base: &VkBase, cb: vk::CommandBuffer, screen_span: Rect, texture_span: Rect, texture_data: Texture2d ) -> Self {
+
+		let device = &base.device;
 
         let texture = utils::image::create_texture_image(device, texture_data.width, texture_data.height, texture_data.size, texture_data.format);
 
@@ -44,8 +47,12 @@ impl DrawableTexture {
         let usage = vk::BufferUsageFlags::INDEX_BUFFER;
         let ind = utils::buffer::create_buffer(device, RECT_SIZE_IND, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
+		let pso = &base.graphics_pipelines[ShaderTexture::ID];
+		let layout = pso.ubo.as_ref().expect("Expected ubo to be defined.").layouts[0];
+		let descriptor_sets = VkBase::create_descriptor_sets(device, base.descriptor_pool, layout, base.max_in_flight);
+
         transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(device, cb, &texture);
-        DrawableTexture { screen_span, texture_span, texture_data, texture, vbo, ind, coords, screen_span_updated: true, texture_span_updated: true, initialized: false }
+        DrawableTexture { screen_span, texture_span, texture_data, texture, vbo, ind, coords, screen_span_updated: true, texture_span_updated: true, initialized: false, descriptor_sets }
     }
 
     pub fn dirty(&self) -> bool {
@@ -82,8 +89,6 @@ impl DrawableTexture {
                     entity.screen_span_updated = false;
                 }
 
-
-
                 if entity.texture_span_updated {
                     let data_ptr = device.logical.map_memory(entity.coords.memory, 0, RECT_SIZE_VRT as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut [f32; 2];
                     data_ptr.copy_from_nonoverlapping(entity.texture_span.vertices.as_ptr(), entity.screen_span.vertices.len());
@@ -116,33 +121,24 @@ impl DrawableTexture {
             device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
         }
 
-        //TODO: FIX THIS PARADIGM
-        match &pso.ubo {
-            Some(ubo) => {
-                unsafe {
-                    let set = &ubo.sets[current_swap_image..current_swap_image+1];
+        unsafe {
 
-                    for i in 0..entities.len() {
+            for i in 0..entities.len() {
 
-                        VkBase::update_descriptor_set_textures(&device, set[0], &[&entities[i].texture], 0);
+				let set = &entities[i].descriptor_sets[current_swap_image..current_swap_image+1];
 
-                        device.logical.cmd_bind_vertex_buffers(cb, 0, &[entities[i].vbo.buffer, entities[i].coords.buffer], &[0, 0]);
-                        device.logical.cmd_bind_index_buffer(cb, entities[i].ind.buffer, 0, vk::IndexType::UINT16);
+                VkBase::update_descriptor_set_textures(&device, set[0], &[&entities[i].texture], 0);
 
-                        device.logical.cmd_bind_descriptor_sets(
-                            cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0,
-                            &set, &[]);
+                device.logical.cmd_bind_vertex_buffers(cb, 0, &[entities[i].vbo.buffer, entities[i].coords.buffer], &[0, 0]);
+                device.logical.cmd_bind_index_buffer(cb, entities[i].ind.buffer, 0, vk::IndexType::UINT16);
 
-                        device.logical.cmd_draw_indexed(cb, RECT_INDICES.len() as u32, 1, 0, 0, 0);
-                    }
-                }
+                device.logical.cmd_bind_descriptor_sets(
+                    cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0,
+                    &set, &[]);
+
+                device.logical.cmd_draw_indexed(cb, RECT_INDICES.len() as u32, 1, 0, 0, 0);
             }
-
-
-            None => {
-                panic!("ERROR: NO DESCRIPTOR SETS WHEN ONE IS EXPECTED");
-            }
-        };
+        }
 
     }
 

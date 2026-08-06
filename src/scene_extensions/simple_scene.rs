@@ -31,6 +31,7 @@ pub struct SimpleScene
 
 	frame_timer: [DrawableText; 1],
 
+	descriptor_sets: Vec<vk::DescriptorSet>,
     staging: BufferBundle,
     uniform: BufferBundle,
 
@@ -57,7 +58,6 @@ impl SimpleScene
         let cube_d = prism::make_prism(Vec3::new(-5.0, 0.0, 0.0), Vec3::of(0.5), Vec3::new(10.0, 0.0, 0.0));
         let cube_e = prism::make_debug_prism(Vec3::new(0.0, 0.0, 30.0), Vec3::of(5.0));
 
-
         let static_meshes = vec![
             DrawableMesh::new(&base.device, floor),
         ];
@@ -72,10 +72,11 @@ impl SimpleScene
         let staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<SpecialMeshShaderParams>() as u64).unwrap();
         let uniform = allocator.alloc(BufferType::Uniform, std::mem::size_of::<SpecialMeshShaderParams>() as u64).unwrap();
 
-        if let Some(ubo) = base.graphics_pipelines[ShaderSpecialMesh::ID].ubo.as_ref() {
-            for descriptor_set in ubo.sets.iter() {
-                VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&uniform], 0);
-            }
+		let pso = &base.graphics_pipelines[ShaderSpecialMesh::ID];
+		let layout = pso.ubo.as_ref().expect("Expected ubo to be defined.").layouts[0];
+		let descriptor_sets = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, layout, base.max_in_flight);
+        for descriptor_set in descriptor_sets.iter() {
+            VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&uniform], 0);
         }
 
         let time = Instant::now();
@@ -84,7 +85,7 @@ impl SimpleScene
 
         let texture = utils::image::create_texture_image(&base.device, atlas.w, atlas.h, (atlas.w * atlas.h * 4) as u64, PixelFormat::RGBA);
 
-        let frame_timer = [DrawableText::new(Vec3::new(0.0, 0.0, 0.0), texture, allocator, "Hello, World!", 64)];
+        let frame_timer = [DrawableText::new(base, Vec3::new(0.0, 0.0, 0.0), texture, allocator, "Hello, World!", 64)];
 
 
         Self {
@@ -98,6 +99,7 @@ impl SimpleScene
             translation_amount: 0.0,
             frame_timer,
             initialized: false,
+            descriptor_sets,
         }
     }
 
@@ -147,11 +149,8 @@ impl SimpleScene
                 mesh.mesh.recompute_normals();
             }
 
-
-
             DrawableMesh::update(&base.device, &cb, &mut scene.dynamic_meshes);
             DrawableMesh::update(&base.device, &cb, &mut scene.static_meshes);
-
 
             let params = SpecialMeshShaderParams {
                 time: scene.time.elapsed().as_secs_f32(),
@@ -213,18 +212,11 @@ impl SimpleScene
             base.device.logical.cmd_bind_descriptor_sets(*cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0, &[global_descriptor_set], &[]);
         }
 
-        let empty_desc_sets = [];
-
-        let sets = match &base.graphics_pipelines[ShaderSpecialMesh::ID].ubo {
-            Some(ubo) => &ubo.sets[current_image..current_image+1],
-            None => &empty_desc_sets,
-        };
-
         for scene in scenes {
-            //TODO: Should update the descriptor sets here, but ehh
+			let set = &scene.descriptor_sets[current_image..current_image+1];
 
             unsafe {
-                base.device.logical.cmd_bind_descriptor_sets(*cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 1, sets, &[]);
+                base.device.logical.cmd_bind_descriptor_sets(*cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 1, set, &[]);
             }
 
             DrawableMesh::draw(&base.device, cb, pso, &scene.static_meshes);

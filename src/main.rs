@@ -118,7 +118,7 @@ impl App {
         let cb = begin_single_time_command(&base.device, base.spare_command.pool);
 
         let textures = vec![
-            DrawableTexture::new(&base.device, cb, Rect::new(0.75, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture)
+            DrawableTexture::new(&base, cb, Rect::new(0.75, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture)
         ];
 
         let data = unsafe { video_device.current_frame[0..video_device.size() / 2].align_to::<u8>().1.to_vec() };
@@ -128,8 +128,8 @@ impl App {
         let atlas_texture = Texture2d::new(atlas.data, atlas.w, atlas.h, PixelFormat::RGBA);
 
         let sliding_textures = vec![
-            SlidingTexture::new(DrawableTexture::new(&base.device, cb, Rect::new(0.0, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture), 5.0),
-            SlidingTexture::new(DrawableTexture::new(&base.device, cb, Rect::new(0.25, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), atlas_texture), 5.0)
+            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.0, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture), 5.0),
+            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.25, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), atlas_texture), 5.0)
         ];
 
         end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
@@ -183,6 +183,7 @@ impl App {
         let ct = Instant::now();
         let delta_time_dur = ct - self.current_time;
         self.delta_time = delta_time_dur.as_secs_f32();
+		self.current_time = ct;
 
         self.handle_down_keys();
 

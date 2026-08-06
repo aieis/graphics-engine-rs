@@ -2,6 +2,7 @@ use ash::vk;
 
 use crate::geometry::vec3::Vec3;
 use crate::rhi::allocator::{Allocator, BufferType};
+use crate::shader::ShaderText;
 use crate::vk_base::VkBase;
 use crate::vk_bundles::BufferBundle;
 use crate::{DeviceBundle, GraphicsPipelineBundle, TextureBundle};
@@ -23,6 +24,7 @@ pub struct DrawableText {
     pub capacity: usize,
     pub text: Vec<u32>,
 
+	pub descriptor_sets: Vec<vk::DescriptorSet>,
     pub staging: BufferBundle,
     pub uniform: BufferBundle,
 
@@ -31,7 +33,7 @@ pub struct DrawableText {
 
 impl DrawableText {
 
-    pub fn new(position: Vec3, texture: TextureBundle, allocator: &mut Allocator, text: &str, capacity: usize) -> Self {
+    pub fn new(base: &VkBase, position: Vec3, texture: TextureBundle, allocator: &mut Allocator, text: &str, capacity: usize) -> Self {
 
         let size = std::mem::size_of::<TextData>() + capacity * 4;
 
@@ -45,6 +47,10 @@ impl DrawableText {
 
         let text_map = bytes.iter().map(|c| { *c as u32 } ).collect::<Vec<_>>();
 
+		let pso = &base.graphics_pipelines[ShaderText::ID];
+		let layout = pso.ubo.as_ref().expect("Expected ubo to be defined.").layouts[0];
+		let descriptor_sets = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, layout, base.max_in_flight);
+
         DrawableText {
             texture,
             position,
@@ -52,7 +58,8 @@ impl DrawableText {
             text: text_map,
             staging,
             uniform,
-            dirty: true
+            dirty: true,
+            descriptor_sets,
         }
     }
 
@@ -124,51 +131,41 @@ impl DrawableText {
             device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
         }
 
-        //TODO: FIX THIS PARADIGM
-        match &pso.ubo {
-            Some(ubo) => {
-                unsafe {
-                    let set = &ubo.sets[current_swap_image..current_swap_image+1];
+        unsafe {
 
-                    for i in 0..entities.len() {
+            for i in 0..entities.len() {
+				let set = &entities[i].descriptor_sets[current_swap_image..current_swap_image+1];
 
-                        VkBase::update_descriptor_set_textures(&device, set[0], &[&entities[i].texture], 0);
+                VkBase::update_descriptor_set_textures(&device, set[0], &[&entities[i].texture], 0);
 
-                        let size_gen = std::mem::size_of::<TextData>();
+                let size_gen = std::mem::size_of::<TextData>();
 
-                        let buffer = BufferBundle {
-                            buffer: entities[i].uniform.buffer,
-                            memory: entities[i].uniform.memory,
-                            offset: entities[i].uniform.offset,
-                            size: size_gen as u64
-                        };
+                let buffer = BufferBundle {
+                    buffer: entities[i].uniform.buffer,
+                    memory: entities[i].uniform.memory,
+                    offset: entities[i].uniform.offset,
+                    size: size_gen as u64
+                };
 
-                        VkBase::update_descriptor_set_buffers(&device, set[0], &[&buffer], 2);
+                VkBase::update_descriptor_set_buffers(&device, set[0], &[&buffer], 2);
 
-                        let buffer = BufferBundle {
-                            buffer: entities[i].uniform.buffer,
-                            memory: entities[i].uniform.memory,
-                            offset: entities[i].uniform.offset + size_gen as u64,
-                            size: entities[i].capacity as u64 * 4
-                        };
+                let buffer = BufferBundle {
+                    buffer: entities[i].uniform.buffer,
+                    memory: entities[i].uniform.memory,
+                    offset: entities[i].uniform.offset + size_gen as u64,
+                    size: entities[i].capacity as u64 * 4
+                };
 
-                        VkBase::update_descriptor_set_buffers(&device, set[0], &[&buffer], 1);
+                VkBase::update_descriptor_set_buffers(&device, set[0], &[&buffer], 1);
 
 
-                        device.logical.cmd_bind_descriptor_sets(
-                            cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0,
-                            &set, &[]);
+                device.logical.cmd_bind_descriptor_sets(
+                    cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0,
+                    &set, &[]);
 
-                        device.logical.cmd_draw(cb, entities[i].text.len() as u32 * 6, 1, 0, 0);
-                    }
-                }
+                device.logical.cmd_draw(cb, entities[i].text.len() as u32 * 6, 1, 0, 0);
             }
-
-
-            None => {
-                panic!("ERROR: NO DESCRIPTOR SETS WHEN ONE IS EXPECTED");
-            }
-        };
+        }
     }
 
 

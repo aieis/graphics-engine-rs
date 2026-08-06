@@ -41,7 +41,6 @@ pub struct PipelineDescriptor {
 pub struct GraphicsPipelineDescSetData {
     pub has_global_layout: bool,
     pub layouts: Vec<vk::DescriptorSetLayout>,
-    pub sets: Vec<vk::DescriptorSet>,
 }
 
 pub struct GraphicsPipelineBundle {
