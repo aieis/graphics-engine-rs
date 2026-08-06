@@ -15,6 +15,7 @@ mod components;
 
 use std::time::{Duration, Instant};
 
+use components::sliding_texture::SlidingTexture;
 use devices::record_player::RecordPlayer;
 use drawable::{drawable_mesh::DrawableMesh, drawable_tex::DrawableTexture, drawable2d::Drawable2d};
 use geometry::vec3::Vec3;
@@ -45,6 +46,7 @@ struct App {
     rect_bundles: Vec<Drawable2d>,
     mesh_bundles: Vec<DrawableMesh>,
     textures: Vec<DrawableTexture>,
+    sliding_textures: Vec<SlidingTexture>,
     scenes: Vec<SimpleScene>,
     video_device: RecordPlayer,
 
@@ -55,7 +57,6 @@ struct App {
 
     global_descriptor_set: Vec<vk::DescriptorSet>,
     close: bool,
-
 
     current_time: Instant,
     delta_time: f32,
@@ -110,14 +111,25 @@ impl App {
         ];
 
         let data = unsafe { video_device.current_frame[0..video_device.size() / 2].align_to::<u8>().1.to_vec() };
-        let texture = Texture2d::new(data, video_device.width(), video_device.height(), PixelFormat::Z16);
+        let texture = Texture2d::new(data, video_device.width(), video_device.height(), video_device.format());
 
         //TODO: Cleanup descriptor pool
 
         let cb = begin_single_time_command(&base.device, base.spare_command.pool);
 
         let textures = vec![
-            DrawableTexture::new(&base.device, cb, Rect::new(-1.0, -1.0, 2.0, 2.0), Rect::new(0.0, 0.0, 1.0, 1.0), texture)
+            DrawableTexture::new(&base.device, cb, Rect::new(0.75, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture)
+        ];
+
+        let data = unsafe { video_device.current_frame[0..video_device.size() / 2].align_to::<u8>().1.to_vec() };
+        let texture = Texture2d::new(data, video_device.width(), video_device.height(), video_device.format());
+
+        let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
+        let atlas_texture = Texture2d::new(atlas.data, atlas.w, atlas.h, PixelFormat::RGBA);
+
+        let sliding_textures = vec![
+            SlidingTexture::new(DrawableTexture::new(&base.device, cb, Rect::new(0.0, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture), 5.0),
+            SlidingTexture::new(DrawableTexture::new(&base.device, cb, Rect::new(0.25, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), atlas_texture), 5.0)
         ];
 
         end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
@@ -162,6 +174,7 @@ impl App {
 
             shader_poll_time: Instant::now() + SHADER_POLL_INTERVAL,
             close: false,
+            sliding_textures,
         }
     }
 
@@ -209,6 +222,8 @@ impl App {
 
         DrawableTexture::update(&self.base.device, cb, &mut self.textures);
 
+        SlidingTexture::update(&self.base.device, cb, self.delta_time, &mut self.sliding_textures);
+
         unsafe {
             let data_ptr = self.base.device.logical.map_memory(self.camera_staging.memory, self.camera_staging.offset, self.camera_staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut CameraParams;
             data_ptr.copy_from_nonoverlapping(&self.camera.params  as *const CameraParams, self.camera_staging.size as usize);
@@ -254,6 +269,8 @@ impl App {
         };
 
         DrawableTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.textures);
+        SlidingTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.sliding_textures);
+        
         // Drawable2d::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderRect::ID], &self.rect_bundles);
         // DrawableMesh::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderMesh::ID], &self.mesh_bundles);
         let current_image = self.base.current_frame;
@@ -364,6 +381,9 @@ impl Drop for App {
 
             DrawableTexture::release(&self.base.device, &mut self.textures);
             self.textures.clear();
+
+            SlidingTexture::release(&self.base.device, &mut self.sliding_textures);
+            self.sliding_textures.clear();
 
             SimpleScene::release(&mut self.scenes, &self.base);
             self.scenes.clear();

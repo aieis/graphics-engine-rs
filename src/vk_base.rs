@@ -974,52 +974,6 @@ impl VkBase {
     }
 
 
-    pub fn create_buffer_descriptor_sets(
-        device: &DeviceBundle,
-        descriptor_pool: vk::DescriptorPool,
-        descriptor_set_layout: vk::DescriptorSetLayout,
-        buffers: &[&BufferBundle],
-        swapchain_images_size: usize,
-        dst_binding: u32,
-    ) -> Vec<vk::DescriptorSet> {
-        let mut layouts: Vec<vk::DescriptorSetLayout> = vec![];
-        for _ in 0..swapchain_images_size {
-            layouts.push(descriptor_set_layout);
-        }
-
-        let descriptor_set_allocate_info = vk::DescriptorSetAllocateInfo::default()
-            .descriptor_pool(descriptor_pool)
-            .set_layouts(&layouts);
-
-        let descriptor_sets = unsafe { device.logical.allocate_descriptor_sets(&descriptor_set_allocate_info).unwrap() };
-
-        for &descriptor_set in descriptor_sets.iter() {
-            let descriptor_buffer_infos: Vec<_> = buffers.iter().map(|buffer| {
-                vk::DescriptorBufferInfo {
-                    buffer: buffer.buffer,
-                    offset: buffer.offset,
-                    range: buffer.size,
-                }
-            }).collect::<_>();
-
-            let descriptor_write_sets = [
-                vk::WriteDescriptorSet::default()
-                    .dst_set(descriptor_set)
-                    .dst_binding(dst_binding)
-                    .dst_array_element(0)
-                    .descriptor_count(1)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&descriptor_buffer_infos)
-            ];
-
-            unsafe {
-                device.logical.update_descriptor_sets(&descriptor_write_sets, &[]);
-            }
-        }
-
-        descriptor_sets
-    }
-
     /* Setup validation layer callbacks */
     pub fn setup_validation(entry: &ash::Entry, instance: &ash::Instance) -> (debug_utils::Instance, vk::DebugUtilsMessengerEXT) {
         let message_severity = vk::DebugUtilsMessageSeverityFlagsEXT::WARNING

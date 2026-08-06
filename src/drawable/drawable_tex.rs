@@ -55,7 +55,7 @@ impl DrawableTexture {
             || self.texture_data.dirty;
     }
 
-    pub fn update(device: &DeviceBundle, cb: vk::CommandBuffer, entities: &mut Vec<Self>) -> bool {
+    pub fn update(device: &DeviceBundle, cb: vk::CommandBuffer, entities: &mut [Self]) -> bool {
         let mut recorded = false;
 
         for entity in entities.iter_mut() {
