@@ -11,14 +11,15 @@ mod scene_extensions;
 mod geometry;
 mod rhi;
 mod scene;
+mod components;
 
 use std::time::{Duration, Instant};
 
 use devices::record_player::RecordPlayer;
 use drawable::{drawable_mesh::DrawableMesh, drawable_tex::DrawableTexture, drawable2d::Drawable2d};
 use geometry::vec3::Vec3;
-use mesh::{ Rect, cube};
-use primitives::texture2d::{PixelFormat, Texture2d};
+use mesh::{ RectMesh, cube};
+use primitives::{rect::Rect, texture2d::{PixelFormat, Texture2d}};
 use scene::camera::{Camera, CameraParams, CameraAction};
 use scene_extensions::simple_scene::SimpleScene;
 use utils::{image::{begin_single_time_command, end_single_time_command}, keyboard::KeyboardState};
@@ -95,9 +96,9 @@ impl App {
 
 
         let rect_bundles = vec![
-            Drawable2d::new(&base.device, Rect::new(-0.9, -0.9, 0.5, 0.5, [1.0, 0.0, 0.0])),
-            Drawable2d::new(&base.device, Rect::new(0.0, 0.0, 0.5, 0.5, [0.0, 0.0, 1.0])),
-            Drawable2d::new(&base.device, Rect::new(-0.25, -0.25, 0.5, 0.5, [0.0, 1.0, 1.0]))
+            Drawable2d::new(&base.device, RectMesh::new(-0.9, -0.9, 0.5, 0.5, [1.0, 0.0, 0.0])),
+            Drawable2d::new(&base.device, RectMesh::new(0.0, 0.0, 0.5, 0.5, [0.0, 0.0, 1.0])),
+            Drawable2d::new(&base.device, RectMesh::new(-0.25, -0.25, 0.5, 0.5, [0.0, 1.0, 1.0]))
         ];
 
         let mesh_bundles = vec![
@@ -116,7 +117,7 @@ impl App {
         let cb = begin_single_time_command(&base.device, base.spare_command.pool);
 
         let textures = vec![
-            DrawableTexture::new(&base.device, cb, Rect::new(-1.0, -1.0, 2.0, 2.0, [1.0, 1.0, 1.0]), texture)
+            DrawableTexture::new(&base.device, cb, Rect::new(-1.0, -1.0, 2.0, 2.0), Rect::new(0.0, 0.0, 1.0, 1.0), texture)
         ];
 
         end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
@@ -252,7 +253,7 @@ impl App {
             None => { return; }
         };
 
-        // DrawableTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.textures);
+        DrawableTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.textures);
         // Drawable2d::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderRect::ID], &self.rect_bundles);
         // DrawableMesh::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderMesh::ID], &self.mesh_bundles);
         let current_image = self.base.current_frame;

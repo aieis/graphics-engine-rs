@@ -1,31 +1,33 @@
-pub struct Rect {
-    pub vertices: Vec<[f32; 2]>,
+pub struct RectMesh {
+    pub vertices: [[f32; 2]; 4],
     pub dirty_vertices: bool,
 
-    pub colour: Vec<[f32; 3]>,
+    pub colour: [[f32; 3]; 4],
     pub dirty_colour: bool,
 
-    pub indices: Vec<u16>,
+    pub indices: [u16; 6],
     pub dirty_indices: bool,
 }
 
-impl Rect {
+pub const RECT_INDICES: [u16; 6] = [0, 1, 2, 0, 2, 3];
+
+impl RectMesh {
     pub fn new(x: f32, y: f32, width: f32, height: f32, col: [f32; 3]) -> Self {
-        let vertices = vec![
+        let vertices = [
             [x, y],
             [x+width, y],
             [x+width, y+height],
             [x, y+height]
         ];
 
-        let colour = vec![
+        let colour = [
             col,
             col,
             col,
             col
         ];
 
-        let indices = vec![0, 1, 2, 0, 2, 3];
+        let indices = RECT_INDICES;
 
         Self {
             vertices,

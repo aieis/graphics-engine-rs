@@ -1,11 +1,11 @@
 use ash::vk;
 
-use crate::mesh::Rect;
+use crate::mesh::RectMesh;
 use crate::vk_bundles::BufferBundle;
 use crate::{utils::buffer, DeviceBundle, GraphicsPipelineBundle};
 
 pub struct Drawable2d {
-    pub mesh: Rect,
+    pub mesh: RectMesh,
     pub vbo: BufferBundle,
     pub col: BufferBundle,
     pub ind: BufferBundle,
@@ -14,7 +14,7 @@ pub struct Drawable2d {
 
 impl Drawable2d {
 
-    pub fn new(device: &DeviceBundle, mesh: Rect) -> Self {
+    pub fn new(device: &DeviceBundle, mesh: RectMesh) -> Self {
         let size_vrt = mesh.size_vrt() as u64;
         let size_col = mesh.size_col() as u64;
         let size_ind = mesh.size_ind() as u64;
