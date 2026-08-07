@@ -86,17 +86,17 @@ pub fn load_ff(path: &str) -> Result<RgbaImage, String> {
 
     let mut buffer = vec![0u8; (w * h * 4) as usize];
 
-    for r in 0..w as usize {
-        for c in 0..h as usize {
-            let src = r * c * 4 * 2 + FF_MAGIC_BYTES.len();
-            let dst = r * c * 4;
+    for y in 0..h as usize {
+        for x in 0..w as usize {
+            let src = (y * w as usize + x) * 4 * 2 + FF_MAGIC_BYTES.len();
+            let dst = (y * w as usize + x) * 4;
 
 
             // We are ignoring the second byte
             let r = u8::from_be(data[src]   as u8);
-            let g = u8::from_be(data[src+1] as u8);
-            let b = u8::from_be(data[src+2] as u8);
-            let a = u8::from_be(data[src+3] as u8);
+            let g = u8::from_be(data[src+2] as u8);
+            let b = u8::from_be(data[src+4] as u8);
+            let a = u8::from_be(data[src+6] as u8);
 
             buffer[dst + 0] = r;
             buffer[dst + 1] = g;
@@ -185,6 +185,16 @@ mod tests {
 		write_load_farbfeld_image();
 		let im = load_ff(TEST_IMAGE_PATH).unwrap();
 		write_ff("./test_output/reoutput.ff", im);
+	}
+
+	#[test]
+	fn test_image_bin() {
+        let data =include_bytes!("../test_output/Emacs.bin").to_vec();
+
+        let [w, h, _] = [217, 175, 4];
+
+        let im = RgbaImage { w, h, data };
+		write_ff("./test_output/Emacs.ff", im);
 	}
 
 }

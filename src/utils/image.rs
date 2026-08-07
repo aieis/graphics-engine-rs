@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use ash::vk;
 
+use crate::vk_bundles::BufferBundle;
 use crate::{DeviceBundle, ImageBundle, TextureBundle};
 use crate::primitives::texture2d::PixelFormat;
 
@@ -194,13 +195,18 @@ impl TransitionOpTrait for TransitionOp<ImageLayout_Undefined, ImageLayout_Color
 
 pub fn transition_image_layout<S: ImageLayout_Transition, D: ImageLayout_Transition>(
     device: &DeviceBundle,
-    command_buffer: vk::CommandBuffer,
+    cb: vk::CommandBuffer,
     texture: &TextureBundle,
 ) where TransitionOp<S, D>: TransitionOpTrait {
     let trans_params = <TransitionOp<S, D>>::get_transition_params();
 
-    let sub_res = vk::ImageSubresourceRange { aspect_mask: texture.aspect_flags, base_mip_level: 0, level_count: 1,
-                                              base_array_layer: 0, layer_count: 1 };
+    let sub_res = vk::ImageSubresourceRange {
+        aspect_mask: texture.aspect_flags,
+        base_mip_level: 0,
+        level_count: 1,
+        base_array_layer: 0,
+        layer_count: 1
+    };
 
     let image_barriers = [
         vk::ImageMemoryBarrier::default()
@@ -215,7 +221,7 @@ pub fn transition_image_layout<S: ImageLayout_Transition, D: ImageLayout_Transit
     ];
 
     unsafe {
-        device.logical.cmd_pipeline_barrier(command_buffer, trans_params.source_stage, trans_params.destination_stage
+        device.logical.cmd_pipeline_barrier(cb, trans_params.source_stage, trans_params.destination_stage
                                             , vk::DependencyFlags::empty(), &[], &[], &image_barriers);
     }
 }
@@ -253,12 +259,13 @@ pub fn end_single_time_command(device: &DeviceBundle, command_pool: vk::CommandP
 
 pub fn copy_buffer_to_image(
     device: &DeviceBundle,
-    command_buffer: vk::CommandBuffer,
+    cb: vk::CommandBuffer,
     texture: &TextureBundle,
-    buffer: vk::Buffer,
+    buffer: &BufferBundle,
     width: u32,
     height: u32,
 ) {
+
     let sub_res = vk::ImageSubresourceLayers {
         aspect_mask: texture.aspect_flags,
         mip_level: 0,
@@ -269,14 +276,15 @@ pub fn copy_buffer_to_image(
     let buffer_image_regions = [
         vk::BufferImageCopy::default()
             .image_subresource(sub_res)
+            .buffer_offset(buffer.offset)
             .image_extent(vk::Extent3D { width, height, depth: 1})
             .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
     ];
 
     unsafe {
         device.logical.cmd_copy_buffer_to_image(
-            command_buffer,
-            buffer,
+            cb,
+            buffer.buffer,
             texture.resource.image,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             &buffer_image_regions,

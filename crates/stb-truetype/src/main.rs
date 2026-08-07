@@ -6,9 +6,10 @@ use farbfeld_image::{load_ff, write_ff, RgbaImage};
 
 use stb_truetype::*;
 
-const FONT_BUFFER: &[u8] = include_bytes!("../../../assets/fonts/Iosevka-Regular.ttf");
-
-const FONT_ATLAS_PATH: &str = "atlas/iosevka.ff";
+// const FONT_BUFFER: &[u8] = include_bytes!("../../../assets/fonts/Iosevka-Regular.ttf");
+// const FONT_ATLAS_PATH: &str = "atlas/iosevka.ff";
+const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/PixelOperator8-Bold.ttf");
+const FONT_ATLAS_PATH: &str = "atlas/Atlas_Pixel_Operator.ff";
 
 fn main() {
 
@@ -42,20 +43,26 @@ fn pack_atlas_sparse() {
 
     println!("Character dimensions: {}x{}", w_c, h_c);
 
+    let chars_per_row = 32;
+    let chars_per_col = 8;
 
-    let w = w_c;
-    let h = h_c * 256;
+    let w = w_c * chars_per_row;
+    let h = h_c * chars_per_col;
 
     let mut image_data = vec![0; w * h * 4];
 
     for (i, c) in code_points.iter().enumerate() {
         let c_i = chars[i] as usize;
-        let px = 0;
-        let py = (c_i+1) * h_c - c.h;
 
-		for y in 0..c.h {
+        let c_pos_x = c_i % chars_per_row;
+        let c_pos_y = c_i / chars_per_row;
+
+        let px = c_pos_x * w_c;
+        let py = (c_pos_y+1) * h_c - c.h;
+
+        for y in 0..c.h {
 			for x in 0..c.w {
-                let dst = ((py + y) * w_c + (px + x)) * 4;
+                let dst = ((py + y) * w + (px + x)) * 4;
                 image_data[dst+3] = c.bitmap[y*c.w + x];
 			}
 		}
@@ -144,3 +151,4 @@ fn pack_atlas_tight() {
         }
     };
 }
+

@@ -180,7 +180,7 @@ impl SimpleScene
 
                     // TODO: This should only happen the once at the top
                     let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
-					println!("Atlas: {:?}", &atlas.data[0..4]);
+					println!("Atlas Loaded :: Resolution: ({}x{}) :: Pixel 0: {:?}", atlas.w, atlas.h, &atlas.data[0..4]);
 
                     let size = scene.frame_timer[0].texture.staging.size;
                     let data_ptr = base.device.logical.map_memory(scene.frame_timer[0].texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
@@ -190,7 +190,7 @@ impl SimpleScene
 					utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
 
                     utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
-                    utils::image::copy_buffer_to_image(&base.device, *cb, &scene.frame_timer[0].texture, scene.frame_timer[0].texture.staging.buffer, atlas.w, atlas.h);
+                    utils::image::copy_buffer_to_image(&base.device, *cb, &scene.frame_timer[0].texture, &scene.frame_timer[0].texture.staging, atlas.w, atlas.h);
                     utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.frame_timer[0].texture);
                 }
 

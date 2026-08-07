@@ -77,3 +77,65 @@ const fn make_bad_glyph_arr() -> [bool; 256]{
     map[160] = true; // TODO: FIX this is 'p'
     map
 }
+
+pub struct FontAtlasInfo {
+    pub chars_per_col: u32,
+    pub chars_per_row: u32,
+    pub char_width: u32,
+    pub char_height: u32
+}
+
+pub fn get_font_atlas_path(pfx: &str, font_atlas_info: &FontAtlasInfo) -> String {
+    return format!("{}_{}x{}_{}x{}_atlas.ff", pfx, font_atlas_info.chars_per_col, font_atlas_info.chars_per_row, font_atlas_info.char_width, font_atlas_info.char_height);
+}
+
+
+
+pub fn parse_font_atlas_info(path: &str) -> Result<FontAtlasInfo, String> {
+
+    let info: Vec<_> = path.split('_').collect::<Vec<_>>();
+
+    let n  = info.len();
+    if  n < 4 {
+        return Err("Atlas path is bad.".to_string())
+    }
+
+    let info = [info[n-3], info[n-2]];
+
+    let [cols_x_rows, width_x_height] = info;
+
+    let cols_x_rows: Vec<_> = cols_x_rows.split('x').collect::<Vec<_>>();
+    
+    
+
+    println!("HELLO: {} and {}", cols_x_rows, width_x_height);
+
+    Err("Incomplete".to_string())
+
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_path_maker() {
+        let info = FontAtlasInfo {
+            chars_per_col: 32,
+            chars_per_row: 8,
+            char_width: 8,
+            char_height: 8,
+        };
+
+        let path = get_font_atlas_path("sample_font", &info);
+        assert!(&path == "sample_font_32x8_8x8_atlas.ff");
+    }
+
+    #[test]
+    pub fn test_atlas_info_extractor() {
+        let path = "sample_font_32x8_8x8_atlas.ff";
+        let info = parse_font_atlas_info(path);
+    }
+
+}

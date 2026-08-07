@@ -102,7 +102,7 @@ impl DrawableTexture {
                     device.logical.unmap_memory(entity.texture.staging.memory);
 
                     transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(device, cb, &entity.texture);
-                    copy_buffer_to_image(device, cb, &entity.texture, entity.texture.staging.buffer, entity.texture_data.width, entity.texture_data.height);
+                    copy_buffer_to_image(device, cb, &entity.texture, &entity.texture.staging, entity.texture_data.width, entity.texture_data.height);
                     transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(device, cb, &entity.texture);
 
                     // TODO: Concurrency assumption
