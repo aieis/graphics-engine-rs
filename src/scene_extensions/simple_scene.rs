@@ -81,7 +81,7 @@ impl SimpleScene
 
         let time = Instant::now();
 
-        let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
+        let atlas = farbfeld_image::load_ff("assets/fonts/Atlas_Pixel_Operator_8x32_7x8_atlas.ff").expect("Could not find font atlas.");
 
         let texture = utils::image::create_texture_image(&base.device, atlas.w, atlas.h, (atlas.w * atlas.h * 4) as u64, PixelFormat::RGBA);
 
@@ -179,7 +179,8 @@ impl SimpleScene
                 unsafe {
 
                     // TODO: This should only happen the once at the top
-                    let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
+					let atlas = farbfeld_image::load_ff("assets/fonts/Atlas_Pixel_Operator_8x32_7x8_atlas.ff").expect("Could not find font atlas.");
+
 					println!("Atlas Loaded :: Resolution: ({}x{}) :: Pixel 0: {:?}", atlas.w, atlas.h, &atlas.data[0..4]);
 
                     let size = scene.frame_timer[0].texture.staging.size;
