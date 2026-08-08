@@ -27,7 +27,7 @@ const vec2 OFFSETS[6] = {
 #define CHARS_LEN 13
 const uint CHAR_TEST[CHARS_LEN] = {
 	    72, 69, 76, 76, 79, 44, 32, 87, 79, 82, 76, 68, 33
-	// 	H   E   L   L   L   O   ,       W   O   R   L   D
+	// 	 H   E   L   L   O   ,       W   O   R   L   D   !
 };
 
 const uint CHARS_PER_ROW = 32;
@@ -40,14 +40,13 @@ void main() {
     uint char_index = (gl_VertexIndex  / 6);
     uint c = Chars.Data[char_index];
 
-	// char_index = char_index % 5;
 	c = CHAR_TEST[char_index % CHARS_LEN];
 
     vec2 dims = vec2(7, 8); //T.CharDims.xy;
 
     uint c_pos_x = c % CHARS_PER_ROW;
     uint c_pos_y = c / CHARS_PER_ROW;
-    
+
     float cy = c_pos_y*dims.y;
     float cx = c_pos_x*dims.x;
 
@@ -56,8 +55,8 @@ void main() {
 
     float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * dims.y;
     float coord_cy_v = (cy + v_y_offset) / (CHARS_PER_COL * dims.y);
-    
-    
+
+
 
     vec2 coord = vec2(coord_cx_v, coord_cy_v);
 
@@ -68,7 +67,7 @@ void main() {
 
     float p_x_offset = OFFSETS[gl_VertexIndex % 6].x * cw;
     float p_y_offset = OFFSETS[gl_VertexIndex % 6].y * cw;
-     
+
 
 	vec2 pos =  vec2(-1 + cw, -1 + cw) + vec2(char_index*cw + p_x_offset, p_y_offset);
 
