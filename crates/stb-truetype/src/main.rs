@@ -11,6 +11,8 @@ use stb_truetype::*;
 const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/PixelOperator8-Bold.ttf");
 const FONT_ATLAS_PATH_PFX: &str = "atlas/Atlas_Pixel_Operator";
 
+const CHARS: [char; 65] = create_target_chars();
+
 fn main() {
 
     let args = std::env::args().collect::<Vec<_>>();
@@ -25,13 +27,7 @@ fn main() {
 fn pack_atlas_sparse() {
     let font = InitFont(FONT_BUFFER);
 
-	let chars_lc: Vec<_> = (b'a'..=b'z').map(|c| { c as char }).collect();
-	let chars_uc: Vec<_> = (b'A'..=b'Z').map(|c| { c as char }).collect();
-	let chars_d: Vec<_>  = (b'0'..=b'9').map(|c| { c as char }).collect();
-	let chars_p = vec![',', ';', '-', '=', '+'];
-
-	let chars = [chars_lc, chars_uc, chars_d, chars_p].concat();
-    let code_points = chars.iter().map(|c| { GetCodepointBitmap(&font, *c, 8.0) }).collect::<Vec<_>>();
+    let code_points = CHARS.iter().map(|c| { GetCodepointBitmap(&font, *c, 8.0) }).collect::<Vec<_>>();
 
     let mut char_width = 0;
     let mut char_height = 0;
@@ -52,7 +48,7 @@ fn pack_atlas_sparse() {
     let mut image_data = vec![0; w * h * 4];
 
     for (i, c) in code_points.iter().enumerate() {
-        let c_i = chars[i] as usize;
+        let c_i = CHARS[i] as usize;
 
         let c_pos_x = c_i % chars_per_row;
         let c_pos_y = c_i / chars_per_row;
@@ -98,14 +94,7 @@ fn pack_atlas_sparse() {
 
 fn pack_atlas_tight() {
     let font = InitFont(FONT_BUFFER);
-
-	let chars_lc: Vec<_> = (b'a'..=b'z').map(|c| { c as char }).collect();
-	let chars_uc: Vec<_> = (b'A'..=b'Z').map(|c| { c as char }).collect();
-	let chars_d: Vec<_>  = (b'0'..=b'9').map(|c| { c as char }).collect();
-	let chars_p = vec![',', ';', '-', '=', '+'];
-
-	let chars = [chars_lc, chars_uc, chars_d, chars_p].concat();
-    let code_points = chars.iter().map(|c| { GetCodepointBitmap(&font, *c, 40.0) }).collect::<Vec<_>>();
+    let code_points = CHARS.iter().map(|c| { GetCodepointBitmap(&font, *c, 40.0) }).collect::<Vec<_>>();
 
     let mut char_width = 0;
     let mut char_height = 0;
@@ -162,4 +151,68 @@ fn pack_atlas_tight() {
             println!("{}", err);
         }
     };
+}
+
+const fn create_target_chars() -> [char; 65] {
+	const CHARS_LC_SIZE: usize = (b'z' - b'a') as usize;
+	let mut chars_lc = ['a'; CHARS_LC_SIZE];
+	let mut c = b'a';
+	while c < b'z' {
+		chars_lc[c as usize - b'a' as usize] = c as char;
+		c += 1;
+	}
+
+	const CHARS_UC_SIZE: usize = (b'z' - b'a') as usize;
+	let mut chars_uc = ['a'; CHARS_UC_SIZE];
+	let mut c = b'A';
+	while c < b'Z' {
+		chars_uc[c as usize - b'A' as usize] = c as char;
+		c += 1;
+	}
+
+	const CHARS_D_SIZE: usize = (b'9' - b'0') as usize;
+	let mut chars_d = ['a'; CHARS_D_SIZE];
+	let mut c = b'0';
+	while c < b'9' {
+		chars_d[c as usize - b'0' as usize] = c as char;
+		c += 1;
+	}
+
+	const CHARS_P_SIZE: usize = 6;
+	let chars_p: [char; CHARS_P_SIZE] = [',', ';', '-', '=', '+', '!'];
+
+
+	let mut chars = ['a'; CHARS_LC_SIZE + CHARS_UC_SIZE + CHARS_D_SIZE + CHARS_P_SIZE];
+	let mut k = 0;
+
+	let mut i = 0;
+	while i < CHARS_LC_SIZE {
+		chars[k] = chars_lc[i];
+		i += 1;
+		k += 1;
+	}
+
+	let mut i = 0;
+	while i < CHARS_UC_SIZE {
+		chars[k] = chars_uc[i];
+		i += 1;
+		k += 1;
+	}
+
+	let mut i = 0;
+	while i < CHARS_D_SIZE {
+		chars[k] = chars_d[i];
+		i += 1;
+		k += 1;
+	}
+
+	let mut i = 0;
+	while i < CHARS_P_SIZE {
+		chars[k] = chars_p[i];
+		i += 1;
+		k += 1;
+	}
+
+
+	chars
 }

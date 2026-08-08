@@ -85,7 +85,7 @@ impl SimpleScene
 
         let texture = utils::image::create_texture_image(&base.device, atlas.w, atlas.h, (atlas.w * atlas.h * 4) as u64, PixelFormat::RGBA);
 
-        let frame_timer = [DrawableText::new(base, Vec3::new(0.0, 0.0, 0.0), texture, allocator, "Hello, World!", 64)];
+        let frame_timer = [DrawableText::new(base, Vec3::new(0.0, 0.0, 0.0), texture, allocator, "HELLO, WORLD!", 64)];
 
 
         Self {

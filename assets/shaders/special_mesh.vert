@@ -66,7 +66,7 @@ void main() {
         float alpha = ((light_cos * -1) + 1) / 2;
         float dark_factor = 0.8 * alpha;
 
-        frag_color = 0.2 * vec3(col.x, col.y, col.z) * ( 1 - dark_factor);
+        frag_color = 0.9 * vec3(col.x, col.y, col.z) * ( 1 - dark_factor);
 
     } else if (TARGET == TARGET_COL_DEPTH) {
         float dz_col = (world_pos.z - camera_pos.z - 1) / 8.0;

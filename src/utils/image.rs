@@ -58,23 +58,24 @@ pub fn create_image_view(device: &DeviceBundle, image: &ImageBundle, aspect_flag
     Ok(image_view)
 }
 
+// TODO: Sampler params
 pub fn create_sampler(device: &DeviceBundle) -> Result<vk::Sampler> {
     let sampler_create_info = vk::SamplerCreateInfo::default()
         .flags(vk::SamplerCreateFlags::empty())
-        .mag_filter(vk::Filter::LINEAR)
-        .min_filter(vk::Filter::LINEAR)
+        .mag_filter(vk::Filter::NEAREST)
+        .min_filter(vk::Filter::NEAREST)
         .address_mode_u(vk::SamplerAddressMode::REPEAT)
         .address_mode_v(vk::SamplerAddressMode::REPEAT)
         .address_mode_w(vk::SamplerAddressMode::REPEAT)
         .max_anisotropy(16.0)
         .compare_enable(false)
         .compare_op(vk::CompareOp::ALWAYS)
-        .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+        .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
         .min_lod(0.0)
         .max_lod(0.0)
         .mip_lod_bias(0.0)
         .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
-        .anisotropy_enable(true)
+        .anisotropy_enable(false)
         .unnormalized_coordinates(false);
 
     let sampler = unsafe { device.logical.create_sampler(&sampler_create_info, None)?};
