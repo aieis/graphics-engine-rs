@@ -1,6 +1,6 @@
 # Overview
 
-Rust project for graphics and rendering in vulkan. 
+Rust project for graphics and rendering in vulkan. This project is spun off from a purely experimental project linked below.
 
 # Dependencies
 
@@ -18,7 +18,11 @@ In my emacs configuration:
 
 # References
 
-- Font: https://github.com/be5invis/Iosevka
+- Original:
+
+- Font:
+  + Iosevka: https://github.com/be5invis/Iosevka
+  + PixelOperator
 
 - Vulkan-Tutorials
   + https://vulkan-tutorial.com/

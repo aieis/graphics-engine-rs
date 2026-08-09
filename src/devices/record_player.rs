@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 
-use crate::primitives::texture2d::PixelFormat;
+use crate::primitives::image::PixelFormat;
 
 pub struct RecordData {
     pub width: u32,

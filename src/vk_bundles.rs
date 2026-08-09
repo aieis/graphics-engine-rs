@@ -70,7 +70,6 @@ pub struct ImageBundle {
     pub format: vk::Format,
 }
 
-
 pub struct CommandBundle {
     pub pool: vk::CommandPool,
     pub buffers: Vec<vk::CommandBuffer>

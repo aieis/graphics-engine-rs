@@ -6,7 +6,7 @@ use ash::vk;
 
 use crate::vk_bundles::BufferBundle;
 use crate::{DeviceBundle, ImageBundle, TextureBundle};
-use crate::primitives::texture2d::PixelFormat;
+use crate::primitives::image::PixelFormat;
 
 use super::buffer::create_buffer;
 use super::common::find_memory_type;

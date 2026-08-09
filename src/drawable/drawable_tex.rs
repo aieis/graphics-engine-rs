@@ -6,13 +6,13 @@ use crate::utils::image::{copy_buffer_to_image, transition_image_layout, ImageLa
 use crate::vk_base::VkBase;
 use crate::vk_bundles::BufferBundle;
 use crate::{utils, DeviceBundle, GraphicsPipelineBundle, TextureBundle};
-use crate::primitives::{texture2d::Texture2d, rect::Rect};
+use crate::primitives::{image::Image, rect::Rect};
 
 
 pub struct DrawableTexture {
     pub screen_span: Rect,
     pub texture_span: Rect,
-    pub texture_data: Texture2d,
+    pub texture_data: Image,
     pub texture: TextureBundle,
     pub vbo: BufferBundle,
     pub ind: BufferBundle,
@@ -29,7 +29,7 @@ const RECT_SIZE_VRT: u64 = Rect::size_of_vertices() as u64;
 
 impl DrawableTexture {
 
-    pub fn new( base: &VkBase, cb: vk::CommandBuffer, screen_span: Rect, texture_span: Rect, texture_data: Texture2d ) -> Self {
+    pub fn new( base: &VkBase, cb: vk::CommandBuffer, screen_span: Rect, texture_span: Rect, texture_data: Image ) -> Self {
 
 		let device = &base.device;
 

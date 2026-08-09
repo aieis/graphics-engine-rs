@@ -20,7 +20,7 @@ use devices::record_player::RecordPlayer;
 use drawable::{drawable_mesh::DrawableMesh, drawable_tex::DrawableTexture, drawable2d::Drawable2d};
 use geometry::vec3::Vec3;
 use mesh::{ RectMesh, cube};
-use primitives::{rect::Rect, texture2d::{PixelFormat, Texture2d}};
+use primitives::{rect::Rect, image::{PixelFormat, Image}};
 use scene::camera::{Camera, CameraParams, CameraAction};
 use scene_extensions::simple_scene::SimpleScene;
 use utils::{image::{begin_single_time_command, end_single_time_command}, keyboard::KeyboardState};
@@ -111,7 +111,7 @@ impl App {
         ];
 
         let data = unsafe { video_device.current_frame[0..video_device.size() / 2].align_to::<u8>().1.to_vec() };
-        let texture = Texture2d::new(data, video_device.width(), video_device.height(), video_device.format());
+        let texture = Image::new(data, video_device.width(), video_device.height(), video_device.format());
 
         //TODO: Cleanup descriptor pool
 
@@ -122,10 +122,10 @@ impl App {
         ];
 
         let data = unsafe { video_device.current_frame[0..video_device.size() / 2].align_to::<u8>().1.to_vec() };
-        let texture = Texture2d::new(data, video_device.width(), video_device.height(), video_device.format());
+        let texture = Image::new(data, video_device.width(), video_device.height(), video_device.format());
 
         let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
-        let atlas_texture = Texture2d::new(atlas.data, atlas.w, atlas.h, PixelFormat::RGBA);
+        let atlas_texture = Image::new(atlas.data, atlas.w, atlas.h, PixelFormat::RGBA);
 
         let sliding_textures = vec![
             SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.00, -1.0, 0.4, 0.4), Rect::new(0.0, 0.0, 0.2, 0.2), texture), 5.0),

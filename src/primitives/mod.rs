@@ -1,2 +1,2 @@
-pub mod texture2d;
+pub mod image;
 pub mod rect;

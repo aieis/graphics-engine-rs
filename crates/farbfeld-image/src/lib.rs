@@ -61,7 +61,10 @@ pub fn load_ff(path: &str) -> Result<RgbaImage, String> {
         Err(err) => return Err(format!("Failed to read farbfeld image at {}: \n\t {}", path, err.to_string())),
     };
 
+	load_ff_from_memory(&data)
+}
 
+pub fn load_ff_from_memory(data: &[u8]) -> Result<RgbaImage, String> {
     if data.len() < FF_HEADER_LEN {
         return Err(format!("Data length ({}) is less than the FF_HEADER_LEN ({})", data.len(), FF_HEADER_LEN));
     }
