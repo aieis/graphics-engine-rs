@@ -6,6 +6,7 @@ layout(location = 1) out vec3 TextColor;
 
 layout(set = 0, binding = 0) uniform sampler2D FontAtlas;
 
+// For some reason uint gets padded so that they take up 16 bytes each (12 bytes of padding)
 layout(set = 0, binding = 1) uniform CharsDataArray { uvec4 Data[16]; } Chars;
 
 layout(set = 0, binding = 2) uniform TextData {
@@ -39,7 +40,7 @@ void main() {
 
 	// c = CHAR_TEST[char_index % CHARS_LEN];
 
-    vec2 dims = T.CharDims.xy;
+    vec2 dims = vec2(T.CharDims.x, T.CharDims.y);
 	uint chars_per_row = uint(T.CharPacking.x);
 	uint chars_per_col = uint(T.CharPacking.y);
 

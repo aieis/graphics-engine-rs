@@ -8,10 +8,11 @@ use stb_truetype::*;
 
 // const FONT_BUFFER: &[u8] = include_bytes!("../../../assets/fonts/Iosevka-Regular.ttf");
 // const FONT_ATLAS_PATH: &str = "atlas/iosevka.ff";
-const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/PixelOperator8-Bold.ttf");
-const FONT_ATLAS_PATH_PFX: &str = "atlas/Atlas_Pixel_Operator";
+const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/MonospaceTypewriter.ttf");
+const FONT_ATLAS_PATH_PFX: &str = "atlas/Atlas_MonospaceTypewriter";
+const FONT_HEIGHT_TARGET: f32 = 40.0;
 
-const CHARS: [char; 65] = create_target_chars();
+const CHARS: [char; 67] = create_target_chars();
 
 fn main() {
 
@@ -27,7 +28,7 @@ fn main() {
 fn pack_atlas_sparse() {
     let font = InitFont(FONT_BUFFER);
 
-    let code_points = CHARS.iter().map(|c| { GetCodepointBitmap(&font, *c, 8.0) }).collect::<Vec<_>>();
+    let code_points = CHARS.iter().map(|c| { GetCodepointBitmap(&font, *c, FONT_HEIGHT_TARGET) }).collect::<Vec<_>>();
 
     let mut char_width = 0;
     let mut char_height = 0;
@@ -94,7 +95,7 @@ fn pack_atlas_sparse() {
 
 fn pack_atlas_tight() {
     let font = InitFont(FONT_BUFFER);
-    let code_points = CHARS.iter().map(|c| { GetCodepointBitmap(&font, *c, 40.0) }).collect::<Vec<_>>();
+    let code_points = CHARS.iter().map(|c| { GetCodepointBitmap(&font, *c, FONT_HEIGHT_TARGET) }).collect::<Vec<_>>();
 
     let mut char_width = 0;
     let mut char_height = 0;
@@ -153,7 +154,7 @@ fn pack_atlas_tight() {
     };
 }
 
-const fn create_target_chars() -> [char; 65] {
+const fn create_target_chars() -> [char; 67] {
 	const CHARS_LC_SIZE: usize = (b'z' - b'a') as usize;
 	let mut chars_lc = ['a'; CHARS_LC_SIZE];
 	let mut c = b'a';
@@ -178,8 +179,8 @@ const fn create_target_chars() -> [char; 65] {
 		c += 1;
 	}
 
-	const CHARS_P_SIZE: usize = 6;
-	let chars_p: [char; CHARS_P_SIZE] = [',', ';', '-', '=', '+', '!'];
+	const CHARS_P_SIZE: usize = 8;
+	let chars_p: [char; CHARS_P_SIZE] = [',', ':', '_', ';', '-', '=', '+', '!'];
 
 
 	let mut chars = ['a'; CHARS_LC_SIZE + CHARS_UC_SIZE + CHARS_D_SIZE + CHARS_P_SIZE];
