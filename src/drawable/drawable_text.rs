@@ -96,7 +96,7 @@ impl DrawableText {
                 char_dims: Vec3::new(entity.atlas_info.char_width as f32, entity.atlas_info.char_height as f32, 0.0),
                 position: entity.position,
                 colour: Vec3::new(1.0, 1.0, 1.0),
-				char_packing: Vec3::new(entity.atlas_info.chars_per_col as f32, entity.atlas_info.chars_per_row as f32, 0.0)
+				char_packing: Vec3::new(entity.atlas_info.chars_per_row as f32, entity.atlas_info.chars_per_col as f32, 0.0)
             };
 
             unsafe {

@@ -36,7 +36,7 @@ void main() {
 
 
     uint char_index = (gl_VertexIndex  / 6);
-    uint c = Chars.Data[char_index / 4][char_index % 4];
+    uint c = Chars.Data[char_index / 4][char_index % 4] - 32;
 
 	// c = CHAR_TEST[char_index % CHARS_LEN];
 
@@ -50,7 +50,7 @@ void main() {
     float cy = c_pos_y*dims.y;
     float cx = c_pos_x*dims.x;
 
-    float v_x_offset = (OFFSETS[gl_VertexIndex % 6].x + 1.0) * dims.x;
+    float v_x_offset = (OFFSETS[gl_VertexIndex % 6].x + 1.0) / 2.0 * dims.x;
     float coord_cx_v = (cx + v_x_offset) / (chars_per_row * dims.x);
 
     float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * dims.y;
@@ -58,13 +58,13 @@ void main() {
 
     vec2 coord = vec2(coord_cx_v, coord_cy_v);
 
-	float cw = 0.05;
+	float cw = 0.03;
 	float cw_scale = cw / dims.x;
 
     float p_x_offset = OFFSETS[gl_VertexIndex % 6].x * cw;
     float p_y_offset = OFFSETS[gl_VertexIndex % 6].y * cw;
 
-    vec2 pos =  T.Position.xy + vec2(cw, cw) + vec2(char_index*cw + p_x_offset, p_y_offset);
+    vec2 pos =  T.Position.xy + vec2(cw, cw) + vec2(char_index*(cw+0.04) + p_x_offset, p_y_offset);
 
     gl_Position = vec4(pos, 0.0, 1.0);
     TexCoord = coord;

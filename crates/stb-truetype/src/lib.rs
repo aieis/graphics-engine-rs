@@ -88,7 +88,7 @@ pub struct FontAtlasInfo {
 }
 
 pub fn get_font_atlas_path(pfx: &str, font_atlas_info: &FontAtlasInfo) -> String {
-    format!("{}_{}x{}_{}x{}_atlas.ff", pfx, font_atlas_info.chars_per_col, font_atlas_info.chars_per_row, font_atlas_info.char_width, font_atlas_info.char_height)
+    format!("{}_{}x{}_{}x{}_atlas.ff", pfx, font_atlas_info.chars_per_row, font_atlas_info.chars_per_col, font_atlas_info.char_width, font_atlas_info.char_height)
 }
 
 
@@ -141,8 +141,8 @@ mod tests {
     #[test]
     pub fn test_path_maker() {
         let info = FontAtlasInfo {
-            chars_per_col: 32,
-            chars_per_row: 8,
+            chars_per_row: 32,
+            chars_per_col: 8,
             char_width: 8,
             char_height: 8,
         };
@@ -153,13 +153,13 @@ mod tests {
 
     #[test]
     pub fn test_atlas_info_extractor() {
-        let path = "sample_font_32x8_8x8_atlas.ff";
+        let path = "sample_font_32x8_8x9_atlas.ff";
         let info = parse_font_atlas_info(path).expect("Failed to parse");
 
 		assert!(info.chars_per_row == 32);
 		assert!(info.chars_per_col == 8);
-		assert!(info.char_height == 8);
 		assert!(info.char_width == 8);
+		assert!(info.char_height == 9);
     }
 
 }

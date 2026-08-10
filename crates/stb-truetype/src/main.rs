@@ -12,13 +12,14 @@ const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/MonospaceTyp
 const FONT_ATLAS_PATH_PFX: &str = "atlas/Atlas_MonospaceTypewriter";
 const FONT_HEIGHT_TARGET: f32 = 40.0;
 
-const CHARS: [char; 67] = create_target_chars();
+const CHARS: [char; 96] = create_target_chars();
 
 fn main() {
 
     let args = std::env::args().collect::<Vec<_>>();
 
     if args.len() > 1 && args[1] == "--tight" {
+		println!("The following functionality is deprecated");
         pack_atlas_tight();
     } else {
         pack_atlas_sparse();
@@ -30,26 +31,26 @@ fn pack_atlas_sparse() {
 
     let code_points = CHARS.iter().map(|c| { GetCodepointBitmap(&font, *c, FONT_HEIGHT_TARGET) }).collect::<Vec<_>>();
 
-    let mut char_width = 0;
+    let mut char_width  = 0;
     let mut char_height = 0;
 
     for c in code_points.iter() {
-        char_width = if c.w > char_width {c.w} else { char_width };
+        char_width  = if c.w > char_width {c.w} else { char_width };
         char_height = if c.h > char_height {c.h} else { char_height };
     }
 
     println!("Character dimensions: {}x{}", char_width, char_height);
 
-    let chars_per_row = 32;
-    let chars_per_col = 8;
+    let chars_per_row = 12;
+    let chars_per_col = code_points.len() / chars_per_row;
 
-    let w = char_width * chars_per_row;
+    let w = char_width  * chars_per_row;
     let h = char_height * chars_per_col;
 
     let mut image_data = vec![0; w * h * 4];
 
     for (i, c) in code_points.iter().enumerate() {
-        let c_i = CHARS[i] as usize;
+        let c_i = CHARS[i] as usize - 32;
 
         let c_pos_x = c_i % chars_per_row;
         let c_pos_y = c_i / chars_per_row;
@@ -60,6 +61,7 @@ fn pack_atlas_sparse() {
         for y in 0..c.h {
 			for x in 0..c.w {
                 let dst = ((py + y) * w + (px + x)) * 4;
+                image_data[dst+0] = 255;
                 image_data[dst+3] = c.bitmap[y*c.w + x];
 			}
 		}
@@ -154,66 +156,12 @@ fn pack_atlas_tight() {
     };
 }
 
-const fn create_target_chars() -> [char; 67] {
-	const CHARS_LC_SIZE: usize = (b'z' - b'a') as usize;
-	let mut chars_lc = ['a'; CHARS_LC_SIZE];
-	let mut c = b'a';
-	while c < b'z' {
-		chars_lc[c as usize - b'a' as usize] = c as char;
-		c += 1;
+const fn create_target_chars() -> [char; 96] {
+	let mut chars = ['a'; 128 - 32];
+	let mut i = 32u8;
+	while i < 128u8 {
+		chars[(i - 32) as usize] = i as char;
+		i+=1;
 	}
-
-	const CHARS_UC_SIZE: usize = (b'z' - b'a') as usize;
-	let mut chars_uc = ['a'; CHARS_UC_SIZE];
-	let mut c = b'A';
-	while c < b'Z' {
-		chars_uc[c as usize - b'A' as usize] = c as char;
-		c += 1;
-	}
-
-	const CHARS_D_SIZE: usize = (b'9' - b'0') as usize;
-	let mut chars_d = ['a'; CHARS_D_SIZE];
-	let mut c = b'0';
-	while c < b'9' {
-		chars_d[c as usize - b'0' as usize] = c as char;
-		c += 1;
-	}
-
-	const CHARS_P_SIZE: usize = 8;
-	let chars_p: [char; CHARS_P_SIZE] = [',', ':', '_', ';', '-', '=', '+', '!'];
-
-
-	let mut chars = ['a'; CHARS_LC_SIZE + CHARS_UC_SIZE + CHARS_D_SIZE + CHARS_P_SIZE];
-	let mut k = 0;
-
-	let mut i = 0;
-	while i < CHARS_LC_SIZE {
-		chars[k] = chars_lc[i];
-		i += 1;
-		k += 1;
-	}
-
-	let mut i = 0;
-	while i < CHARS_UC_SIZE {
-		chars[k] = chars_uc[i];
-		i += 1;
-		k += 1;
-	}
-
-	let mut i = 0;
-	while i < CHARS_D_SIZE {
-		chars[k] = chars_d[i];
-		i += 1;
-		k += 1;
-	}
-
-	let mut i = 0;
-	while i < CHARS_P_SIZE {
-		chars[k] = chars_p[i];
-		i += 1;
-		k += 1;
-	}
-
-
 	chars
 }

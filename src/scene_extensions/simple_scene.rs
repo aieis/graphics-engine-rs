@@ -17,7 +17,7 @@ use crate::{drawable::drawable_mesh::DrawableMesh, vk_base::VkBase};
 use crate::shader::{ShaderSpecialMesh, ShaderText};
 
 
-macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../assets/fonts/Atlas_Pixel_Operator_8x32_7x8_atlas.ff" }; }
+macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../assets/fonts/Atlas_MonospaceTypewriter_12x8_19x37_atlas.ff" }; }
 
 const FONT_ATLAS_PATH: &str  = FONT_ATLAS_PATH_MAC!();
 const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
