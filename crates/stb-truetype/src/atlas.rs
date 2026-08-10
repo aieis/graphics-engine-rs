@@ -116,6 +116,14 @@ impl FontAtlasDescription {
 
 		let message = text.as_bytes();
 
+		if message.len() == 0 {
+			return RgbaImage {
+				w: 0,
+				h: 0,
+				data: vec![],
+			};
+		}
+
 		let width  = self.info.char_width * message.len() as u32 * 2;
 		let height = self.info.char_height * 2;
 
@@ -123,24 +131,18 @@ impl FontAtlasDescription {
 		let stride = width as usize * 4;
 
 		let baseline = self.ascent as f32 * self.scale;
-		println!("Baseline: {}", baseline);
 
-		let py_base = baseline as i32 + 80;
+		let mut char_advance = self.pack_char(&mut im, message[0] as char, (0, baseline as usize), stride);
 
-		let mut x_pos = self.info.char_width as usize;
+		let mut x_pos = 0;
 
-		for i in 1..message.len() - 1 {
-			let c = message[i];
-			let c_i = c as usize - 32;
-			let glyph = &self.glyphs[c_i];
+		for i in 1..message.len(){
+			let c_i   = message[i-1] as usize - 32;
+			let c_i_1 = message[i] as usize - 32;
+			let advance_amount = (self.advance_map[c_i][c_i_1] as f32 * self.scale + char_advance) as i32;
+			x_pos = (x_pos as i32 + advance_amount as i32) as usize;
 
-            let px = (x_pos as i32 + glyph.x) as usize;
-            let py = (baseline as i32 + glyph.y as i32) as usize;
-
-			Self::pack_char(&mut im, glyph, (px, py), stride);
-			let c_i_1 = message[i+1] as usize - 32;
-			let advance_amount = (glyph.advance as f32 + self.advance_map[c_i][c_i_1] as f32) * self.scale;
-			x_pos = (x_pos as i32 + advance_amount as i32 + glyph.x) as usize;
+			char_advance = self.pack_char(&mut im, message[i] as char, (x_pos, baseline as usize), stride);
 		}
 
 		RgbaImage {
@@ -150,8 +152,16 @@ impl FontAtlasDescription {
 		}
 	}
 
-	pub fn pack_char(im: &mut [u8], glyph: &Glyph, point: (usize, usize), stride: usize) {
+	pub fn pack_char(&self, im: &mut [u8], c: char, point: (usize, usize), stride: usize) -> f32 {
+		let c_i = c as usize - 32;
+		let glyph = &self.glyphs[c_i];
+
 		let (px, py) = point;
+
+        let px = (px as i32 + glyph.x) as usize;
+        let py = (py as i32 + glyph.y as i32) as usize;
+
+
         for y in 0..glyph.h {
 			for x in 0..glyph.w {
                 let dst = (py + y) * stride + (px + x) * 4;
@@ -159,6 +169,8 @@ impl FontAtlasDescription {
                 im[dst+3] = glyph.bitmap[y*glyph.w + x];
 			}
 		}
+
+		glyph.advance as f32 * self.scale + glyph.x as f32
 	}
 
 }

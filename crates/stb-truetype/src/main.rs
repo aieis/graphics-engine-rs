@@ -11,7 +11,7 @@ use stb_truetype::*;
 
 // const FONT_BUFFER: &[u8] = include_bytes!("../../../assets/fonts/Iosevka-Regular.ttf");
 // const FONT_ATLAS_PATH: &str = "atlas/iosevka.ff";
-const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/MonospaceTypewriter.ttf");
+const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/Iosevka-Regular.ttf");
 const FONT_ATLAS_PATH_PFX: &str = "atlas/Atlas_MonospaceTypewriter";
 const FONT_HEIGHT_TARGET: f32 = 40.0;
 
@@ -39,7 +39,7 @@ pub fn pack_atlas_with_info() {
 	let font_info_description = FontAtlasDescription::new(&font, FONT_HEIGHT_TARGET);
 
 	// let im: RgbaImage = font_info_description.pack_message(" Hello, my World. Together we rule. ");
-	let im: RgbaImage = font_info_description.pack_message(" Hello, my Quick World! ");
+	let im: RgbaImage = font_info_description.pack_message("Hello, my Quick World!");
 
 	write_ff("./test_outputs/message.ff", im);
 
