@@ -39,7 +39,7 @@ pub fn pack_atlas_with_info() {
 	let font_info_description = FontAtlasDescription::new(&font, FONT_HEIGHT_TARGET);
 
 	// let im: RgbaImage = font_info_description.pack_message(" Hello, my World. Together we rule. ");
-	let im: RgbaImage = font_info_description.pack_message(" Hello ");
+	let im: RgbaImage = font_info_description.pack_message(" Hello, my Quick World! ");
 
 	write_ff("./test_outputs/message.ff", im);
 

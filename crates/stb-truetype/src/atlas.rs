@@ -116,8 +116,8 @@ impl FontAtlasDescription {
 
 		let message = text.as_bytes();
 
-		let width = self.info.chars_per_row * self.info.char_width * message.len() as u32;
-		let height = self.info.char_height * 30;
+		let width  = self.info.char_width * message.len() as u32 * 2;
+		let height = self.info.char_height * 2;
 
 		let mut im = vec![0; (width * height * 4) as usize];
 		let stride = width as usize * 4;
@@ -127,19 +127,20 @@ impl FontAtlasDescription {
 
 		let py_base = baseline as i32 + 80;
 
-		let mut x_pos = 0;
+		let mut x_pos = self.info.char_width as usize;
+
 		for i in 1..message.len() - 1 {
 			let c = message[i];
 			let c_i = c as usize - 32;
 			let glyph = &self.glyphs[c_i];
 
-            let px = ((x_pos as i32 + (glyph.advance as f32 * self.scale) as i32) + glyph.x) as usize;
-			println!("Glyph.Y: {}", glyph.y);
-            let py = (py_base + glyph.y) as usize;
+            let px = (x_pos as i32 + glyph.x) as usize;
+            let py = (baseline as i32 + glyph.y as i32) as usize;
 
 			Self::pack_char(&mut im, glyph, (px, py), stride);
 			let c_i_1 = message[i+1] as usize - 32;
-			x_pos += self.advance_map[c_i][c_i_1];
+			let advance_amount = (glyph.advance as f32 + self.advance_map[c_i][c_i_1] as f32) * self.scale;
+			x_pos = (x_pos as i32 + advance_amount as i32 + glyph.x) as usize;
 		}
 
 		RgbaImage {
@@ -153,7 +154,7 @@ impl FontAtlasDescription {
 		let (px, py) = point;
         for y in 0..glyph.h {
 			for x in 0..glyph.w {
-                let dst = ((py + y) * stride + (px + x)) * 4;
+                let dst = (py + y) * stride + (px + x) * 4;
                 im[dst+0] = 255;
                 im[dst+3] = glyph.bitmap[y*glyph.w + x];
 			}
