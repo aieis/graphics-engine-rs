@@ -5,26 +5,39 @@ include!("../bindings/bindings.rs");
 
 use anyhow::{Result, anyhow};
 
-pub fn InitFont(font_buffer: &[u8]) -> stbtt_fontinfo {
-
-    let mut font_data = std::mem::MaybeUninit::<stbtt_fontinfo>::uninit();
-
-    unsafe {
-        let font = font_data.as_mut_ptr();
-        stbtt_InitFont(font, font_buffer.as_ptr(), 0);
-        font_data.assume_init()
-    }
-}
-
 pub struct CodePoint {
     pub bitmap: Vec<u8>,
     pub w     : usize,
     pub h     : usize
 }
 
-pub fn GetCodepointBitmap(font: &stbtt_fontinfo, c: char, char_height: f32) -> CodePoint {
+pub struct Glyph {
+    pub bitmap: Vec<u8>,
+    pub w     : usize,
+    pub h     : usize,
+    pub advance : i32,
+}
+
+
+pub struct FontInfo {
+    pub data: stbtt_fontinfo
+}
+
+pub fn InitFont(font_buffer: &[u8]) -> FontInfo {
+
+    let mut font_data = std::mem::MaybeUninit::<stbtt_fontinfo>::uninit();
+
     unsafe {
-        let font = font as *const stbtt_fontinfo;
+        let font = font_data.as_mut_ptr();
+        stbtt_InitFont(font, font_buffer.as_ptr(), 0);
+        FontInfo { data: font_data.assume_init() }
+    }
+}
+
+
+pub fn GetCodepointBitmap(font: &FontInfo, c: char, char_height: f32) -> CodePoint {
+    unsafe {
+        let font = &font.data as *const stbtt_fontinfo;
 
         let c = c as i32;
         let mut w = 0;
@@ -32,7 +45,9 @@ pub fn GetCodepointBitmap(font: &stbtt_fontinfo, c: char, char_height: f32) -> C
 
         // TODO: Find alternative method (perhaps offload the free and carry the pointer around)
 
-        let bitmap_ptr = stbtt_GetCodepointBitmap(font, 0.0, stbtt_ScaleForPixelHeight(font, char_height), c, &mut w, &mut h, std::ptr::null_mut(), std::ptr::null_mut());
+        let scale: f32 = stbtt_ScaleForPixelHeight(font, char_height);
+        let bitmap_ptr = stbtt_GetCodepointBitmap(font, 0.0, scale, c, &mut w, &mut h, std::ptr::null_mut(), std::ptr::null_mut());
+        
         let slice  = std::ptr::slice_from_raw_parts(bitmap_ptr, (w*h) as usize);
         let bitmap = (*slice).to_vec();
 
@@ -46,11 +61,58 @@ pub fn GetCodepointBitmap(font: &stbtt_fontinfo, c: char, char_height: f32) -> C
     }
 }
 
-pub fn IsGlyphEmpty(font: &stbtt_fontinfo, c: char) -> bool {
+pub fn ScaleFontForPixelHeight(font: &FontInfo, pixel_height: f32) -> f32 {
+    unsafe {
+        let font = &font.data as *const stbtt_fontinfo;
+        stbtt_ScaleForPixelHeight(font, pixel_height)
+    }    
+}
+
+pub fn GetGlyph(font: &FontInfo, c: char, scale: f32) -> Glyph {
+    unsafe {
+        let font = &font.data as *const stbtt_fontinfo;
+
+        let c = c as i32;
+
+        let mut advance = 0;
+        let mut lsb = 0;
+        let mut x0 = 0; 
+        let mut y0 = 0; 
+        let mut x1 = 0; 
+        let mut y1 = 0;
+
+        let x_shift = 0.0;
+        
+        stbtt_GetCodepointHMetrics(font, c, &mut advance, &mut lsb);
+        stbtt_GetCodepointBitmapBoxSubpixel(font, c, scale, scale, x_shift, 0.0, &mut x0, &mut y0, &mut x1,&mut y1);
+
+        let w = x1 - x0;
+        let h = y1 - y0;
+        let mut bitmap = vec![0; (w * h) as usize];
+        stbtt_MakeCodepointBitmapSubpixel(font, bitmap.as_mut_ptr() as _, w, h, w, scale, scale, x_shift, 0.0, c);
+ 
+        Glyph {
+            bitmap,
+            w: w as usize,
+            h: h as usize,
+            advance
+        }
+    }
+}
+
+
+pub fn GetCodepointKernAdvance(font: &FontInfo, c: char, c_next: char) -> i32 {
+    unsafe {
+        let font = &font.data as *const stbtt_fontinfo;
+        stbtt_GetCodepointKernAdvance(font, c as i32, c_next as i32)
+    }
+}
+
+pub fn IsGlyphEmpty(font: &FontInfo, c: char) -> bool {
     println!("Checking if char is empty : {}", c as i32);
 
     unsafe {
-        let font = font as *const stbtt_fontinfo;
+        let font = &font.data as *const stbtt_fontinfo;
         let c = c as i32;
 
         let res = stbtt_IsGlyphEmpty(font, c) != 0;

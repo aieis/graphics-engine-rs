@@ -2,6 +2,8 @@
  * This little program is used to generate the font atlas to be used by the main application
  */
 
+mod atlas;
+
 use farbfeld_image::{load_ff, write_ff, RgbaImage};
 
 use stb_truetype::*;
