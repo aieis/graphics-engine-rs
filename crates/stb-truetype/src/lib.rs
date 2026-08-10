@@ -13,6 +13,8 @@ pub struct CodePoint {
 
 pub struct Glyph {
     pub bitmap: Vec<u8>,
+	pub x     : i32,
+	pub y     : i32,
     pub w     : usize,
     pub h     : usize,
     pub advance : i32,
@@ -47,7 +49,7 @@ pub fn GetCodepointBitmap(font: &FontInfo, c: char, char_height: f32) -> CodePoi
 
         let scale: f32 = stbtt_ScaleForPixelHeight(font, char_height);
         let bitmap_ptr = stbtt_GetCodepointBitmap(font, 0.0, scale, c, &mut w, &mut h, std::ptr::null_mut(), std::ptr::null_mut());
-        
+
         let slice  = std::ptr::slice_from_raw_parts(bitmap_ptr, (w*h) as usize);
         let bitmap = (*slice).to_vec();
 
@@ -65,8 +67,23 @@ pub fn ScaleFontForPixelHeight(font: &FontInfo, pixel_height: f32) -> f32 {
     unsafe {
         let font = &font.data as *const stbtt_fontinfo;
         stbtt_ScaleForPixelHeight(font, pixel_height)
-    }    
+    }
 }
+
+pub fn GetFontVMetrics(font: &FontInfo) -> i32 {
+    unsafe {
+
+        let font = &font.data as *const stbtt_fontinfo;
+		let mut ascent = 0;
+		let mut descent = 0;
+		let mut line_gap = 0;
+		stbtt_GetFontVMetrics(font, &mut ascent, &mut descent, &mut line_gap);
+
+		ascent
+	}
+
+}
+
 
 pub fn GetGlyph(font: &FontInfo, c: char, scale: f32) -> Glyph {
     unsafe {
@@ -76,13 +93,13 @@ pub fn GetGlyph(font: &FontInfo, c: char, scale: f32) -> Glyph {
 
         let mut advance = 0;
         let mut lsb = 0;
-        let mut x0 = 0; 
-        let mut y0 = 0; 
-        let mut x1 = 0; 
+        let mut x0 = 0;
+        let mut y0 = 0;
+        let mut x1 = 0;
         let mut y1 = 0;
 
         let x_shift = 0.0;
-        
+
         stbtt_GetCodepointHMetrics(font, c, &mut advance, &mut lsb);
         stbtt_GetCodepointBitmapBoxSubpixel(font, c, scale, scale, x_shift, 0.0, &mut x0, &mut y0, &mut x1,&mut y1);
 
@@ -90,12 +107,14 @@ pub fn GetGlyph(font: &FontInfo, c: char, scale: f32) -> Glyph {
         let h = y1 - y0;
         let mut bitmap = vec![0; (w * h) as usize];
         stbtt_MakeCodepointBitmapSubpixel(font, bitmap.as_mut_ptr() as _, w, h, w, scale, scale, x_shift, 0.0, c);
- 
+
         Glyph {
             bitmap,
+            x: x0 as i32,
+            y: y0 as i32,
             w: w as usize,
             h: h as usize,
-            advance
+            advance,
         }
     }
 }

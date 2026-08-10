@@ -1,26 +1,28 @@
-use crate::{FontAtlasInfo, FontInfo, GetGlyph, FONT_ATLAS_PATH_PFX, get_font_atlas_path, ScaleFontForPixelHeight, GetCodepointKernAdvance};
+use stb_truetype::*;
+use crate::FONT_ATLAS_PATH_PFX;
+
 
 use farbfeld_image::{load_ff, write_ff, RgbaImage};
 
 const CHARS_LEN: usize = 96;
 const CHARS: [char; CHARS_LEN] = create_target_chars();
-const FONT_HEIGHT_TARGET: f32 = 40.0;
 
 
 pub struct FontAtlasDescription {
-    info: FontAtlasInfo,
-    scale: f32,
-    internal_advance: [i32; CHARS_LEN],
-    advance_map: [[i32; CHARS_LEN]; CHARS_LEN]
+    pub info: FontAtlasInfo,
+	pub glyphs: [Glyph; CHARS_LEN],
+    pub scale: f32,
+    pub ascent: i32,
+    pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN]
 }
 
 impl FontAtlasDescription {
 
-    pub fn new(font: &FontInfo, scale: f32) -> Self {
+    pub fn new(font: &FontInfo, pixel_info: f32) -> Self {
 
-        let scale = ScaleFontForPixelHeight(&font, FONT_HEIGHT_TARGET);
+        let scale = ScaleFontForPixelHeight(&font, pixel_info);
 
-        let glyphs = CHARS.iter().map(|c| { GetGlyph(&font, *c, scale) }).collect::<Vec<_>>();
+        let glyphs: [Glyph; CHARS_LEN] = CHARS.map(|c| { GetGlyph(&font, c, scale) });
 
         let mut char_width  = 0;
         let mut char_height = 0;
@@ -84,27 +86,79 @@ impl FontAtlasDescription {
             }
         };
 
-        let mut internal_advance: [i32; CHARS_LEN] = [0; CHARS_LEN];
-
-        for i in 0..CHARS_LEN {
-            internal_advance[i] = glyphs[i].advance;
-        }
-
         let mut advance_map = [[0; CHARS_LEN]; CHARS_LEN];
         for i in 0..CHARS_LEN {
             for j in 0..CHARS_LEN {
                 advance_map[i][j] = GetCodepointKernAdvance(&font, CHARS[i], CHARS[j]);
             }
         }
-        
+
+		let ascent = GetFontVMetrics(&font);
+
+		println!("Atlas Info: \n\t Char Dims: {}x{} \n\t Ascent: {} \n\t Scale: {}",
+				 atlas_info.char_width,
+				 atlas_info.char_height,
+				 ascent,
+				 scale,
+		);
+
         Self {
             info: atlas_info,
-            internal_advance,
+            ascent,
             advance_map,
             scale,
+            glyphs
         }
     }
 
+
+	pub fn pack_message(&self, text: &str) -> RgbaImage {
+
+		let message = text.as_bytes();
+
+		let width = self.info.chars_per_row * self.info.char_width * message.len() as u32;
+		let height = self.info.char_height * 30;
+
+		let mut im = vec![0; (width * height * 4) as usize];
+		let stride = width as usize * 4;
+
+		let baseline = self.ascent as f32 * self.scale;
+		println!("Baseline: {}", baseline);
+
+		let py_base = baseline as i32 + 80;
+
+		let mut x_pos = 0;
+		for i in 1..message.len() - 1 {
+			let c = message[i];
+			let c_i = c as usize - 32;
+			let glyph = &self.glyphs[c_i];
+
+            let px = ((x_pos as i32 + (glyph.advance as f32 * self.scale) as i32) + glyph.x) as usize;
+			println!("Glyph.Y: {}", glyph.y);
+            let py = (py_base + glyph.y) as usize;
+
+			Self::pack_char(&mut im, glyph, (px, py), stride);
+			let c_i_1 = message[i+1] as usize - 32;
+			x_pos += self.advance_map[c_i][c_i_1];
+		}
+
+		RgbaImage {
+			w: width,
+			h: height,
+			data: im,
+		}
+	}
+
+	pub fn pack_char(im: &mut [u8], glyph: &Glyph, point: (usize, usize), stride: usize) {
+		let (px, py) = point;
+        for y in 0..glyph.h {
+			for x in 0..glyph.w {
+                let dst = ((py + y) * stride + (px + x)) * 4;
+                im[dst+0] = 255;
+                im[dst+3] = glyph.bitmap[y*glyph.w + x];
+			}
+		}
+	}
 
 }
 

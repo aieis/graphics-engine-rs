@@ -4,4 +4,4 @@
 SRC_FILE="$1"
 TEMP_FILE="/tmp/show-ff-tmp-file.png"
 
-magick "$SRC_FILE" "$TEMP_FILE" && gwenview "$TEMP_FILE"
+magick "$SRC_FILE" "$TEMP_FILE" && feh "$TEMP_FILE"

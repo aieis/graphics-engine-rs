@@ -51,7 +51,7 @@ pub fn write_ff(path: &str, im: RgbaImage)
     }
 
 
-    std::fs::write(path, buffer).expect("Failed to write ff test image");
+    std::fs::write(path, buffer).expect("Failed to write ff image");
 
 }
 

@@ -5,6 +5,7 @@
 mod atlas;
 
 use farbfeld_image::{load_ff, write_ff, RgbaImage};
+use atlas::FontAtlasDescription;
 
 use stb_truetype::*;
 
@@ -23,9 +24,25 @@ fn main() {
     if args.len() > 1 && args[1] == "--tight" {
 		println!("The following functionality is deprecated");
         pack_atlas_tight();
+	}
+    else if args.len() > 1 && args[1] == "--with-info" {
+		println!("Makeing a full atlas");
+		pack_atlas_with_info();
     } else {
         pack_atlas_sparse();
     }
+}
+
+pub fn pack_atlas_with_info() {
+    let font = InitFont(FONT_BUFFER);
+
+	let font_info_description = FontAtlasDescription::new(&font, FONT_HEIGHT_TARGET);
+
+	// let im: RgbaImage = font_info_description.pack_message(" Hello, my World. Together we rule. ");
+	let im: RgbaImage = font_info_description.pack_message(" Hello ");
+
+	write_ff("./test_outputs/message.ff", im);
+
 }
 
 fn pack_atlas_sparse() {
