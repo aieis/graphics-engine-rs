@@ -13,6 +13,11 @@ pub struct CodePoint {
 
 pub struct Glyph {
     pub bitmap: Vec<u8>,
+    pub info: GlyphInfo
+}
+
+
+pub struct GlyphInfo {
 	pub x     : i32,
 	pub y     : i32,
     pub w     : usize,
@@ -85,36 +90,54 @@ pub fn GetFontVMetrics(font: &FontInfo) -> i32 {
 }
 
 
-pub fn GetGlyph(font: &FontInfo, c: char, scale: f32) -> Glyph {
+pub fn GetCodepointBitmapBoxSubpixel(font: &FontInfo, c: char, scale_x: f32, scale_y: f32, shift_x: f32, shift_y: f32) -> (i32, i32, i32, i32) {
     unsafe {
         let font = &font.data as *const stbtt_fontinfo;
-
         let c = c as i32;
 
-        let mut advance = 0;
-        let mut lsb = 0;
         let mut x0 = 0;
         let mut y0 = 0;
         let mut x1 = 0;
         let mut y1 = 0;
 
+        stbtt_GetCodepointBitmapBoxSubpixel(font, c, scale_x, scale_y, shift_x, shift_y, &mut x0, &mut y0, &mut x1,&mut y1);
+
+        (x0, y0, x1, y1)
+    }
+}
+
+
+
+pub fn GetGlyph(font_info: &FontInfo, c: char, scale: f32) -> Glyph {
+    unsafe {
+        let font = &font_info.data as *const stbtt_fontinfo;
+
+        let c = c as i32;
+
+        let mut advance = 0;
+        let mut lsb = 0;
+
         let x_shift = 0.0;
 
         stbtt_GetCodepointHMetrics(font, c, &mut advance, &mut lsb);
-        stbtt_GetCodepointBitmapBoxSubpixel(font, c, scale, scale, x_shift, 0.0, &mut x0, &mut y0, &mut x1,&mut y1);
+        let (x0, y0, x1, y1) = GetCodepointBitmapBoxSubpixel(font_info, c as u8 as char, scale, scale, x_shift, 0.0);
 
         let w = x1 - x0;
         let h = y1 - y0;
         let mut bitmap = vec![0; (w * h) as usize];
         stbtt_MakeCodepointBitmapSubpixel(font, bitmap.as_mut_ptr() as _, w, h, w, scale, scale, x_shift, 0.0, c);
 
-        Glyph {
-            bitmap,
+        let info = GlyphInfo {
             x: x0 as i32,
             y: y0 as i32,
             w: w as usize,
             h: h as usize,
             advance,
+        };
+
+        Glyph {
+            bitmap,
+            info,
         }
     }
 }

@@ -18,18 +18,18 @@ pub struct FontAtlasDescription {
 
 impl FontAtlasDescription {
 
-    pub fn new(font: &FontInfo, pixel_info: f32) -> Self {
+    pub fn new(font: &FontInfo, pixel_height: f32) -> Self {
 
-        let scale = ScaleFontForPixelHeight(&font, pixel_info);
+        let scale = ScaleFontForPixelHeight(&font, pixel_height);
 
         let glyphs: [Glyph; CHARS_LEN] = CHARS.map(|c| { GetGlyph(&font, c, scale) });
 
         let mut char_width  = 0;
         let mut char_height = 0;
 
-        for c in glyphs.iter() {
-            char_width  = if c.w > char_width {c.w} else { char_width };
-            char_height = if c.h > char_height {c.h} else { char_height };
+        for glyph in glyphs.iter() {
+            char_width  = if glyph.info.w > char_width {glyph.info.w} else { char_width };
+            char_height = if glyph.info.h > char_height {glyph.info.h} else { char_height };
         }
 
         println!("Character dimensions: {}x{}", char_width, char_height);
@@ -42,20 +42,20 @@ impl FontAtlasDescription {
 
         let mut image_data = vec![0; w * h * 4];
 
-        for (i, c) in glyphs.iter().enumerate() {
+        for (i, glyph) in glyphs.iter().enumerate() {
             let c_i = CHARS[i] as usize - 32;
 
             let c_pos_x = c_i % chars_per_row;
             let c_pos_y = c_i / chars_per_row;
 
             let px = c_pos_x * char_width;
-            let py = (c_pos_y+1) * char_height - c.h;
+            let py = (c_pos_y+1) * char_height - glyph.info.h;
 
-            for y in 0..c.h {
-			    for x in 0..c.w {
+            for y in 0..glyph.info.h {
+			    for x in 0..glyph.info.w {
                     let dst = ((py + y) * w + (px + x)) * 4;
                     image_data[dst+0] = 255;
-                    image_data[dst+3] = c.bitmap[y*c.w + x];
+                    image_data[dst+3] = glyph.bitmap[y*glyph.info.w + x];
 			    }
 		    }
 	    }
@@ -134,15 +134,15 @@ impl FontAtlasDescription {
 
 		let mut char_advance = self.pack_char(&mut im, message[0] as char, (0, baseline as usize), stride);
 
-		let mut x_pos = 0;
+		let mut x_pos = 0.0f32;
 
 		for i in 1..message.len(){
 			let c_i   = message[i-1] as usize - 32;
 			let c_i_1 = message[i] as usize - 32;
-			let advance_amount = (self.advance_map[c_i][c_i_1] as f32 * self.scale + char_advance) as i32;
-			x_pos = (x_pos as i32 + advance_amount as i32) as usize;
+			let advance_amount = self.advance_map[c_i][c_i_1] as f32 * self.scale + char_advance;
+			x_pos = x_pos + advance_amount;
 
-			char_advance = self.pack_char(&mut im, message[i] as char, (x_pos, baseline as usize), stride);
+			char_advance = self.pack_char(&mut im, message[i] as char, (x_pos as usize, baseline as usize), stride);
 		}
 
 		RgbaImage {
@@ -158,19 +158,19 @@ impl FontAtlasDescription {
 
 		let (px, py) = point;
 
-        let px = (px as i32 + glyph.x) as usize;
-        let py = (py as i32 + glyph.y as i32) as usize;
+        let px = (px as i32 + glyph.info.x) as usize;
+        let py = (py as i32 + glyph.info.y as i32) as usize;
 
 
-        for y in 0..glyph.h {
-			for x in 0..glyph.w {
+        for y in 0..glyph.info.h {
+			for x in 0..glyph.info.w {
                 let dst = (py + y) * stride + (px + x) * 4;
                 im[dst+0] = 255;
-                im[dst+3] = glyph.bitmap[y*glyph.w + x];
+                im[dst+3] = glyph.bitmap[y*glyph.info.w + x];
 			}
 		}
 
-		glyph.advance as f32 * self.scale + glyph.x as f32
+		glyph.info.advance as f32 * self.scale
 	}
 
 }

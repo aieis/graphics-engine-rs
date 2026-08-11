@@ -9,11 +9,9 @@ use atlas::FontAtlasDescription;
 
 use stb_truetype::*;
 
-// const FONT_BUFFER: &[u8] = include_bytes!("../../../assets/fonts/Iosevka-Regular.ttf");
-// const FONT_ATLAS_PATH: &str = "atlas/iosevka.ff";
 const FONT_BUFFER: &[u8]    = include_bytes!("../../../assets/fonts/Iosevka-Regular.ttf");
-const FONT_ATLAS_PATH_PFX: &str = "atlas/Atlas_MonospaceTypewriter";
-const FONT_HEIGHT_TARGET: f32 = 40.0;
+const FONT_ATLAS_PATH_PFX: &str = "atlas/Atlas_Iosevka_Regular";
+const FONT_HEIGHT_TARGET: f32 = 64.0;
 
 const CHARS: [char; 96] = create_target_chars();
 
@@ -24,9 +22,8 @@ fn main() {
     if args.len() > 1 && args[1] == "--tight" {
 		println!("The following functionality is deprecated");
         pack_atlas_tight();
-	}
-    else if args.len() > 1 && args[1] == "--with-info" {
-		println!("Makeing a full atlas");
+	} else if args.len() > 1 && args[1] == "--with-info" {
+		println!("Making a full atlas");
 		pack_atlas_with_info();
     } else {
         pack_atlas_sparse();
@@ -38,7 +35,6 @@ pub fn pack_atlas_with_info() {
 
 	let font_info_description = FontAtlasDescription::new(&font, FONT_HEIGHT_TARGET);
 
-	// let im: RgbaImage = font_info_description.pack_message(" Hello, my World. Together we rule. ");
 	let im: RgbaImage = font_info_description.pack_message("Hello, my Quick World!");
 
 	write_ff("./test_outputs/message.ff", im);
