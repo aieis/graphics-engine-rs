@@ -1,8 +1,7 @@
 use stb_truetype::*;
-use crate::FONT_ATLAS_PATH_PFX;
 
 
-use farbfeld_image::{load_ff, write_ff, RgbaImage};
+use farbfeld_image::{write_ff, RgbaImage};
 
 const CHARS_LEN: usize = 96;
 const CHARS: [char; CHARS_LEN] = create_target_chars();
@@ -12,13 +11,14 @@ pub struct FontAtlasDescription {
     pub info: FontAtlasInfo,
     pub scale: f32,
     pub ascent: i32,
-    pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN]
+    pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN],
+    pub glyph_info: [GlyphInfo; CHARS_LEN]
 
 }
 
 
 pub struct FontAtlas {
-	pub glyphs: [Glyph; CHARS_LEN],
+	pub atlas: RgbaImage,
     pub desc: FontAtlasDescription
 }
 
@@ -79,19 +79,6 @@ impl FontAtlas {
 		    char_height: char_height as u32,
 	    };
 
-	    let atlas_output_path = get_font_atlas_path(FONT_ATLAS_PATH_PFX, &atlas_info);
-        write_ff(&atlas_output_path, atlas);
-
-        match load_ff(&atlas_output_path) {
-            Ok(im) => {
-                println!("Loaded Image: {}x{}", im.w, im.h);
-            }
-
-            Err(err) => {
-                println!("{}", err);
-            }
-        };
-
         let mut advance_map = [[0; CHARS_LEN]; CHARS_LEN];
         for i in 0..CHARS_LEN {
             for j in 0..CHARS_LEN {
@@ -108,16 +95,19 @@ impl FontAtlas {
 				 scale,
 		);
 
+        let glyph_info = glyphs.each_ref().map(|g| { g.info.clone() });
+
         let desc = FontAtlasDescription {
             info: atlas_info,
             ascent,
             advance_map,
             scale,
+            glyph_info
         };
 
         Self {
+            atlas,
             desc,
-            glyphs
         }
     }
 
@@ -164,25 +154,37 @@ impl FontAtlas {
 
 	pub fn pack_char(&self, im: &mut [u8], c: char, point: (usize, usize), stride: usize) -> f32 {
 		let c_i = c as usize - 32;
-		let glyph = &self.glyphs[c_i];
+
+		let glyph_info = &self.desc.glyph_info[c_i];
 
 		let (px, py) = point;
 
-        let px = (px as i32 + glyph.info.x) as usize;
-        let py = (py as i32 + glyph.info.y as i32) as usize;
+        let px = (px as i32 + glyph_info.x) as usize;
+        let py = (py as i32 + glyph_info.y as i32) as usize;
 
+        let glyph_col = c_i % self.desc.info.chars_per_row as usize;
+        let glyph_row = c_i / self.desc.info.chars_per_row as usize;
 
-        for y in 0..glyph.info.h {
-			for x in 0..glyph.info.w {
+        let atlas_px =   glyph_col   * self.desc.info.char_width as usize;
+        let atlas_py = (glyph_row+1) * self.desc.info.char_height as usize - glyph_info.h;
+        let atlas_stride = (self.desc.info.chars_per_row * self.desc.info.char_width * 4) as usize;
+
+        for y in 0..glyph_info.h {
+			for x in 0..glyph_info.w {
+                let src = (atlas_py + y) * atlas_stride + (atlas_px + x) *4;
                 let dst = (py + y) * stride + (px + x) * 4;
                 im[dst+0] = 255;
-                im[dst+3] = glyph.bitmap[y*glyph.info.w + x];
+                im[dst+3] = self.atlas.data[src+3];
 			}
 		}
 
-		glyph.info.advance as f32 * self.desc.scale
+		glyph_info.advance as f32 * self.desc.scale
 	}
 
+    pub fn write_atlas(&self, pfx: &str) {
+	    let atlas_output_path = get_font_atlas_path(pfx, &self.desc.info);
+        write_ff(&atlas_output_path, &self.atlas);
+    }
 }
 
 

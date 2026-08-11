@@ -33,11 +33,15 @@ fn main() {
 pub fn pack_atlas_with_info() {
     let font = InitFont(FONT_BUFFER);
 
-	let font_info_description = FontAtlas::new(&font, FONT_HEIGHT_TARGET);
+	let font_atlas = FontAtlas::new(&font, FONT_HEIGHT_TARGET);
+    font_atlas.write_atlas(FONT_ATLAS_PATH_PFX);
 
-	let im: RgbaImage = font_info_description.pack_message("Hello, my Quick World!");
+    let (h, m, s) = get_time_of_day();
 
-	write_ff("./test_outputs/message.ff", im);
+    let msg = format!("Hello, my Quick Brown Fox!: {:02}:{:02}:{:02}", h, m, s);
+	let im: RgbaImage = font_atlas.pack_message(&msg);
+
+	write_ff("./test_outputs/message.ff", &im);
 
 }
 
@@ -96,7 +100,7 @@ fn pack_atlas_sparse() {
 	};
 
 	let atlas_output_path = get_font_atlas_path(FONT_ATLAS_PATH_PFX, &atlas_info);
-    write_ff(&atlas_output_path, atlas);
+    write_ff(&atlas_output_path, &atlas);
 
     match load_ff(&atlas_output_path) {
         Ok(im) => {
@@ -155,7 +159,7 @@ fn pack_atlas_tight() {
 
 
 	let atlas_output_path = get_font_atlas_path(FONT_ATLAS_PATH_PFX, &atlas_info);
-    write_ff(&atlas_output_path, atlas);
+    write_ff(&atlas_output_path, &atlas);
 
     match load_ff(&atlas_output_path) {
         Ok(im) => {
@@ -179,4 +183,18 @@ const fn create_target_chars() -> [char; 96] {
 		i+=1;
 	}
 	chars
+}
+
+
+fn get_time_of_day() -> (u64, u64, u64) {
+    let duration = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+        .expect("Time went backwards");
+
+    let total_seconds = duration.as_secs();
+    let secs_in_day = total_seconds % 86400;
+    let h = secs_in_day / 3600;
+    let m = (secs_in_day % 3600) / 60;
+    let s = secs_in_day % 60;
+
+    (h, m, s)
 }

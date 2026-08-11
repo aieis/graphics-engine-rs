@@ -10,8 +10,7 @@ const FF_MAGIC_BYTES: &[u8] = b"farbfeld";
 const FF_HEADER_LEN : usize = 8 + 4 + 4;
 const U8_U16_MAP: [u16; 256] = make_u8_u16_map();
 
-pub fn write_ff(path: &str, im: RgbaImage)
-{
+pub fn write_ff(path: &str, im: &RgbaImage) {
     let data_len = (im.w * im.h * 4 * 2) as usize;
     let mut buffer: Vec<u8> = vec![0; FF_HEADER_LEN + data_len];
 

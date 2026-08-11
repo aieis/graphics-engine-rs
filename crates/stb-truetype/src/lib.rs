@@ -17,6 +17,7 @@ pub struct Glyph {
 }
 
 
+#[derive(Clone)]
 pub struct GlyphInfo {
 	pub x     : i32,
 	pub y     : i32,
