@@ -10,13 +10,19 @@ const CHARS: [char; CHARS_LEN] = create_target_chars();
 
 pub struct FontAtlasDescription {
     pub info: FontAtlasInfo,
-	pub glyphs: [Glyph; CHARS_LEN],
     pub scale: f32,
     pub ascent: i32,
     pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN]
+
 }
 
-impl FontAtlasDescription {
+
+pub struct FontAtlas {
+	pub glyphs: [Glyph; CHARS_LEN],
+    pub desc: FontAtlasDescription
+}
+
+impl FontAtlas {
 
     pub fn new(font: &FontInfo, pixel_height: f32) -> Self {
 
@@ -102,11 +108,15 @@ impl FontAtlasDescription {
 				 scale,
 		);
 
-        Self {
+        let desc = FontAtlasDescription {
             info: atlas_info,
             ascent,
             advance_map,
             scale,
+        };
+
+        Self {
+            desc,
             glyphs
         }
     }
@@ -124,13 +134,13 @@ impl FontAtlasDescription {
 			};
 		}
 
-		let width  = self.info.char_width * message.len() as u32 * 2;
-		let height = self.info.char_height * 2;
+		let width  = self.desc.info.char_width * message.len() as u32 * 2;
+		let height = self.desc.info.char_height * 2;
 
 		let mut im = vec![0; (width * height * 4) as usize];
 		let stride = width as usize * 4;
 
-		let baseline = self.ascent as f32 * self.scale;
+		let baseline = self.desc.ascent as f32 * self.desc.scale;
 
 		let mut char_advance = self.pack_char(&mut im, message[0] as char, (0, baseline as usize), stride);
 
@@ -139,7 +149,7 @@ impl FontAtlasDescription {
 		for i in 1..message.len(){
 			let c_i   = message[i-1] as usize - 32;
 			let c_i_1 = message[i] as usize - 32;
-			let advance_amount = self.advance_map[c_i][c_i_1] as f32 * self.scale + char_advance;
+			let advance_amount = self.desc.advance_map[c_i][c_i_1] as f32 * self.desc.scale + char_advance;
 			x_pos = x_pos + advance_amount;
 
 			char_advance = self.pack_char(&mut im, message[i] as char, (x_pos as usize, baseline as usize), stride);
@@ -170,7 +180,7 @@ impl FontAtlasDescription {
 			}
 		}
 
-		glyph.info.advance as f32 * self.scale
+		glyph.info.advance as f32 * self.desc.scale
 	}
 
 }

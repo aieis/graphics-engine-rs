@@ -5,7 +5,7 @@
 mod atlas;
 
 use farbfeld_image::{load_ff, write_ff, RgbaImage};
-use atlas::FontAtlasDescription;
+use atlas::FontAtlas;
 
 use stb_truetype::*;
 
@@ -33,7 +33,7 @@ fn main() {
 pub fn pack_atlas_with_info() {
     let font = InitFont(FONT_BUFFER);
 
-	let font_info_description = FontAtlasDescription::new(&font, FONT_HEIGHT_TARGET);
+	let font_info_description = FontAtlas::new(&font, FONT_HEIGHT_TARGET);
 
 	let im: RgbaImage = font_info_description.pack_message("Hello, my Quick World!");
 
