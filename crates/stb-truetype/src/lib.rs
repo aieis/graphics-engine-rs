@@ -17,7 +17,7 @@ pub struct Glyph {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GlyphInfo {
 	pub x       : i32,
 	pub y       : i32,
@@ -26,6 +26,16 @@ pub struct GlyphInfo {
     pub w       : usize,
     pub h       : usize,
 }
+
+
+#[derive(Debug)]
+pub struct FontAtlasInfo {
+    pub chars_per_row: u32,
+    pub chars_per_col: u32,
+    pub char_width: u32,
+    pub char_height: u32
+}
+
 
 
 pub struct FontInfo {
@@ -186,12 +196,6 @@ const fn make_bad_glyph_arr() -> [bool; 256]{
     map
 }
 
-pub struct FontAtlasInfo {
-    pub chars_per_row: u32,
-    pub chars_per_col: u32,
-    pub char_width: u32,
-    pub char_height: u32
-}
 
 pub fn get_font_atlas_path(pfx: &str, font_atlas_info: &FontAtlasInfo) -> String {
     format!("{}_{}x{}_{}x{}_atlas.ff", pfx, font_atlas_info.chars_per_row, font_atlas_info.chars_per_col, font_atlas_info.char_width, font_atlas_info.char_height)
@@ -200,6 +204,11 @@ pub fn get_font_atlas_path(pfx: &str, font_atlas_info: &FontAtlasInfo) -> String
 pub fn get_font_atlas_desc_path(pfx: &str, font_atlas_info: &FontAtlasInfo) -> String {
     format!("{}_{}x{}_{}x{}_atlas_desc.bin", pfx, font_atlas_info.chars_per_row, font_atlas_info.chars_per_col, font_atlas_info.char_width, font_atlas_info.char_height)
 }
+
+pub fn get_font_atlas_desc_from_path(path: &str) -> String {
+	format!("{}_desc.bin", &path[0..path.len()-3])
+}
+
 
 
 
@@ -271,5 +280,14 @@ mod tests {
 		assert!(info.char_width == 8);
 		assert!(info.char_height == 9);
     }
+
+	#[test]
+	pub fn test_atlas_get_desc_from_ff() {
+        let path = "sample_font_32x8_8x9_atlas.ff";
+        let desc_path = get_font_atlas_desc_from_path(path);
+
+		assert!(desc_path == "sample_font_32x8_8x9_atlas_desc.bin");
+
+	}
 
 }

@@ -1,12 +1,14 @@
+
 use stb_truetype::*;
+use anyhow::{anyhow, Result, Error};
 
 
-use farbfeld_image::{write_ff, RgbaImage};
+use farbfeld_image::{load_ff, write_ff, RgbaImage};
 
 const CHARS_LEN: usize = 96;
 const CHARS: [char; CHARS_LEN] = create_target_chars();
 
-
+#[derive(Debug)]
 pub struct FontAtlasDescription {
     pub scale: f32,
     pub ascent: i32,
@@ -193,12 +195,14 @@ impl FontAtlas {
 
         let atlas_desc_output_path = get_font_atlas_desc_path(pfx, &self.desc.info);
 
-
         // pub info: FontAtlasInfo,
         // pub scale: f32,
         // pub ascent: i32,
         // pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN],
         // pub glyph_info: [GlyphInfo; CHARS_LEN]
+
+        let mut ptr = 0;
+        let mut buf = [0; S_BUF];
 
         // pub struct FontAtlasInfo {
         //     pub chars_per_col: u32,
@@ -206,30 +210,6 @@ impl FontAtlas {
         //     pub char_width: u32,
         //     pub char_height: u32
         // }
-
-        // pub struct GlyphInfo {
-        // 	pub x     : i32,
-        // 	pub y     : i32,
-        //     pub advance : i32,
-        //     pub w     : usize,
-        //     pub h     : usize,
-        // }
-
-        const S_U32: usize = std::mem::size_of::<u32>();
-        const S_I32: usize = std::mem::size_of::<i32>();
-        const S_F32: usize = std::mem::size_of::<f32>();
-        const S_USZ: usize = std::mem::size_of::<usize>();
-
-        const S_ATLAS_INFO: usize  = S_U32 * 4;
-        const S_ADVANCE_MAP: usize = S_I32 * CHARS_LEN * CHARS_LEN;
-
-        const S_GLYPH_SIZE: usize = S_I32 * 3 + S_USZ * 2;
-        const S_GLYPH_INFOS_SIZE: usize = S_GLYPH_SIZE * CHARS_LEN;
-
-        const S_BUF: usize = S_F32 + S_I32 + S_ATLAS_INFO + S_ADVANCE_MAP + S_GLYPH_INFOS_SIZE;
-
-        let mut ptr = 0;
-        let mut buf = [0; S_BUF];
 
         buf[ptr..ptr+S_F32].copy_from_slice(&self.desc.scale.to_be_bytes());
         ptr += S_F32;
@@ -250,16 +230,144 @@ impl FontAtlas {
         buf[ptr..ptr+S_U32].copy_from_slice(&self.desc.info.char_height.to_be_bytes());
         ptr += S_U32;
 
-
         // Advance map time
         let mut i = 0;
         while i < CHARS_LEN {
             let mut j = 0;
             while j < CHARS_LEN {
-                
+                buf[ptr..ptr+S_I32].copy_from_slice(&self.desc.advance_map[i][j].to_be_bytes());
+				ptr += S_I32;
+				j += 1;
             }
+			i += 1;
         }
+
+		// Write the glyph info
+
+        let mut i = 0;
+        while i < CHARS_LEN {
+            buf[ptr..ptr+S_I32].copy_from_slice(&self.desc.glyph_info[i].x.to_be_bytes());
+			ptr += S_I32;
+
+            buf[ptr..ptr+S_I32].copy_from_slice(&self.desc.glyph_info[i].y.to_be_bytes());
+			ptr += S_I32;
+
+            buf[ptr..ptr+S_I32].copy_from_slice(&self.desc.glyph_info[i].advance.to_be_bytes());
+			ptr += S_I32;
+
+            buf[ptr..ptr+S_USZ].copy_from_slice(&self.desc.glyph_info[i].w.to_be_bytes());
+			ptr += S_USZ;
+
+            buf[ptr..ptr+S_USZ].copy_from_slice(&self.desc.glyph_info[i].h.to_be_bytes());
+			ptr += S_USZ;
+
+			i += 1;
+        }
+
+		match std::fs::write(&atlas_desc_output_path, buf) {
+			Ok(_) => {},
+			Err(err) => println!("Error writing atlas file '{}': \n\t {}", atlas_desc_output_path, err),
+		}
     }
+
+
+    pub fn parse_atlas_from_file(path: &str) -> Result<Self, Error> {
+
+	    let info = parse_font_atlas_info(path)?;
+
+		let atlas = match load_ff(path) {
+			Ok(atlas) => atlas,
+			Err(err) => { return Err(anyhow!(err)); }
+		};
+
+
+        // let atlas_desc_output_path = get_font_atlas_desc_path(pfx, &self.desc.info);
+
+        let mut ptr = 0;
+        let buf = [0u8; S_BUF];
+
+		let scale = f32::from_be_bytes(*<&[u8; S_F32]>::try_from(&buf[ptr..ptr+S_F32]).unwrap());
+        ptr += S_F32;
+
+
+        let ascent = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+        ptr += S_I32;
+
+        // Atlas Info Time
+        let chars_per_row = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        ptr += S_U32;
+
+        let chars_per_col = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        ptr += S_U32;
+
+        let char_width = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        ptr += S_U32;
+
+        let char_height = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        ptr += S_U32;
+
+		let info = FontAtlasInfo {
+			chars_per_row,
+			chars_per_col,
+			char_width,
+			char_height,
+		};
+
+        // Advance map time
+
+		let mut advance_map = [[0i32; CHARS_LEN]; CHARS_LEN];
+
+        let mut i = 0;
+        while i < CHARS_LEN {
+            let mut j = 0;
+            while j < CHARS_LEN {
+                advance_map[i][j] = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+				ptr += S_I32;
+				j += 1;
+            }
+			i += 1;
+        }
+
+		// Write the glyph info
+
+		let mut glyph_info = [0; CHARS_LEN].map(|x| { GlyphInfo { x: 0, y: 0, advance: 0, w: 0, h: 0 } });
+
+        let mut i = 0;
+        while i < CHARS_LEN {
+            let x = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+			ptr += S_I32;
+
+            let y = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+			ptr += S_I32;
+
+            let advance = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+			ptr += S_I32;
+
+            let w = usize::from_be_bytes(*<&[u8; S_USZ]>::try_from(&buf[ptr..ptr+S_USZ]).unwrap());
+			ptr += S_USZ;
+
+            let h = usize::from_be_bytes(*<&[u8; S_USZ]>::try_from(&buf[ptr..ptr+S_USZ]).unwrap());
+			ptr += S_USZ;
+
+			glyph_info[i] = GlyphInfo { x, y, advance, w, h };
+
+			i += 1;
+        }
+
+		let desc = FontAtlasDescription {
+			scale,
+			ascent,
+			info,
+			advance_map,
+			glyph_info,
+		};
+
+		Ok(Self {
+			atlas,
+			desc: todo!(),
+		})
+
+	}
 }
 
 
@@ -272,3 +380,16 @@ const fn create_target_chars() -> [char; 96] {
 	}
 	chars
 }
+
+const S_U32: usize = std::mem::size_of::<u32>();
+const S_I32: usize = std::mem::size_of::<i32>();
+const S_F32: usize = std::mem::size_of::<f32>();
+const S_USZ: usize = std::mem::size_of::<usize>();
+
+const S_ATLAS_INFO: usize  = S_U32 * 4;
+const S_ADVANCE_MAP: usize = S_I32 * CHARS_LEN * CHARS_LEN;
+
+const S_GLYPH_SIZE: usize = S_I32 * 3 + S_USZ * 2;
+const S_GLYPH_INFOS_SIZE: usize = S_GLYPH_SIZE * CHARS_LEN;
+
+const S_BUF: usize = S_F32 + S_I32 + S_ATLAS_INFO + S_ADVANCE_MAP + S_GLYPH_INFOS_SIZE;
