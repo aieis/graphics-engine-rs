@@ -8,12 +8,11 @@ const CHARS: [char; CHARS_LEN] = create_target_chars();
 
 
 pub struct FontAtlasDescription {
-    pub info: FontAtlasInfo,
     pub scale: f32,
     pub ascent: i32,
+    pub info: FontAtlasInfo,
     pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN],
-    pub glyph_info: [GlyphInfo; CHARS_LEN]
-
+    pub glyph_info: [GlyphInfo; CHARS_LEN],
 }
 
 
@@ -184,6 +183,82 @@ impl FontAtlas {
     pub fn write_atlas(&self, pfx: &str) {
 	    let atlas_output_path = get_font_atlas_path(pfx, &self.desc.info);
         write_ff(&atlas_output_path, &self.atlas);
+    }
+
+
+    pub fn serialize_atlas(&self, pfx: &str) {
+
+	    let atlas_output_path = get_font_atlas_path(pfx, &self.desc.info);
+        write_ff(&atlas_output_path, &self.atlas);
+
+        let atlas_desc_output_path = get_font_atlas_desc_path(pfx, &self.desc.info);
+
+
+        // pub info: FontAtlasInfo,
+        // pub scale: f32,
+        // pub ascent: i32,
+        // pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN],
+        // pub glyph_info: [GlyphInfo; CHARS_LEN]
+
+        // pub struct FontAtlasInfo {
+        //     pub chars_per_col: u32,
+        //     pub chars_per_row: u32,
+        //     pub char_width: u32,
+        //     pub char_height: u32
+        // }
+
+        // pub struct GlyphInfo {
+        // 	pub x     : i32,
+        // 	pub y     : i32,
+        //     pub advance : i32,
+        //     pub w     : usize,
+        //     pub h     : usize,
+        // }
+
+        const S_U32: usize = std::mem::size_of::<u32>();
+        const S_I32: usize = std::mem::size_of::<i32>();
+        const S_F32: usize = std::mem::size_of::<f32>();
+        const S_USZ: usize = std::mem::size_of::<usize>();
+
+        const S_ATLAS_INFO: usize  = S_U32 * 4;
+        const S_ADVANCE_MAP: usize = S_I32 * CHARS_LEN * CHARS_LEN;
+
+        const S_GLYPH_SIZE: usize = S_I32 * 3 + S_USZ * 2;
+        const S_GLYPH_INFOS_SIZE: usize = S_GLYPH_SIZE * CHARS_LEN;
+
+        const S_BUF: usize = S_F32 + S_I32 + S_ATLAS_INFO + S_ADVANCE_MAP + S_GLYPH_INFOS_SIZE;
+
+        let mut ptr = 0;
+        let mut buf = [0; S_BUF];
+
+        buf[ptr..ptr+S_F32].copy_from_slice(&self.desc.scale.to_be_bytes());
+        ptr += S_F32;
+
+        buf[ptr..ptr+S_I32].copy_from_slice(&self.desc.ascent.to_be_bytes());
+        ptr += S_I32;
+
+        // Atlas Info Time
+        buf[ptr..ptr+S_U32].copy_from_slice(&self.desc.info.chars_per_row.to_be_bytes());
+        ptr += S_U32;
+
+        buf[ptr..ptr+S_U32].copy_from_slice(&self.desc.info.chars_per_col.to_be_bytes());
+        ptr += S_U32;
+
+        buf[ptr..ptr+S_U32].copy_from_slice(&self.desc.info.char_width.to_be_bytes());
+        ptr += S_U32;
+
+        buf[ptr..ptr+S_U32].copy_from_slice(&self.desc.info.char_height.to_be_bytes());
+        ptr += S_U32;
+
+
+        // Advance map time
+        let mut i = 0;
+        while i < CHARS_LEN {
+            let mut j = 0;
+            while j < CHARS_LEN {
+                
+            }
+        }
     }
 }
 
