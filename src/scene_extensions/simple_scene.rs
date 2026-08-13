@@ -207,7 +207,7 @@ impl SimpleScene
                 unsafe {
 
                     let size = scene.font_data.staging.size;
-                    let data = scene.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w, g.h) });
+                    let data: [(u32, u32); CHARS_LEN] = scene.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
                     let data_ptr = base.device.logical.map_memory(scene.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u32;
                     data_ptr.copy_from_nonoverlapping(data.as_ptr() as _, size as usize);
                     base.device.logical.unmap_memory(scene.font_data.staging.memory);
@@ -221,6 +221,15 @@ impl SimpleScene
                     utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
                     utils::image::copy_buffer_to_image(&base.device, *cb, &scene.font_data.atlas_texture, &scene.font_data.atlas_texture.staging, scene.font_data.atlas.atlas.w, scene.font_data.atlas.atlas.h);
                     utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
+
+					let copy_region = [
+						vk::BufferCopy::default()
+							.src_offset(scene.font_data.staging.offset)
+							.dst_offset(scene.font_data.glyph_uniform.offset)
+							.size(scene.font_data.staging.size)
+					];
+
+					base.device.logical.cmd_copy_buffer(*cb, scene.font_data.staging.buffer, scene.font_data.glyph_uniform.buffer, &copy_region);
                 }
 
                 scene.initialized = true;
@@ -228,8 +237,9 @@ impl SimpleScene
 
 
 			let frame_time_ms = scene.previous_time.elapsed().as_millis();
-			let frame_time = format!("{:>3} ", frame_time_ms);
+			let frame_time = format!("{:>12} ", frame_time_ms);
 			scene.frame_timer[0].set_text(&frame_time);
+			scene.frame_timer[0].kern_text(&scene.font_data.atlas);
 			scene.previous_time = Instant::now();
 
 			DrawableText::update(&base.device, *cb, &mut scene.frame_timer);

@@ -39,9 +39,9 @@ const uint CHAR_TEST[CHARS_LEN] = {
 
 void main() {
 
-
     uint char_index = (gl_VertexIndex  / 6);
     uint c = Chars.Data[char_index / 4][char_index % 4] - 32;
+	c = CHAR_TEST[char_index % CHARS_LEN];
 
     uvec4 glyph_group = Glyphs.Data[c / 2];
     vec2 glyph_dims;
@@ -51,19 +51,16 @@ void main() {
         glyph_dims = vec2(glyph_group.z, glyph_group.w);
     }
 
-    ivec4 glyph_position_s = CharPositions.Data[c / 2];
+    ivec4 glyph_position_s = CharPositions.Data[char_index / 2];
     vec2 glyph_position;
-    if (c % 2 == 0 ) {
+    if (char_index % 2 == 0 ) {
         glyph_position = vec2(glyph_position_s.x, glyph_position_s.y);
     } else {
         glyph_position = vec2(glyph_position_s.z, glyph_position_s.w);
     }
 
-	// c = CHAR_TEST[char_index % CHARS_LEN];
-
     vec2 dims = vec2(T.CharDims.x, T.CharDims.y);
-    glyph_dims = dims;
-
+	
 	uint chars_per_row = uint(T.CharPacking.x);
 	uint chars_per_col = uint(T.CharPacking.y);
 
@@ -87,7 +84,8 @@ void main() {
     float p_x_offset = OFFSETS[gl_VertexIndex % 6].x * glyph_dims.x;
     float p_y_offset = OFFSETS[gl_VertexIndex % 6].y * glyph_dims.y;
 
-    glyph_position = vec2(char_index * dims.x, 0) * 5;
+	// glyph_position = vec2(char_index * dims.x, 0) * 5;
+	glyph_position.y = 0;
 
     vec2 pos =  T.Position.xy + vec2(glyph_position.x, glyph_position.y) * cw_scale + vec2(p_x_offset, p_y_offset) * cw_scale;
 

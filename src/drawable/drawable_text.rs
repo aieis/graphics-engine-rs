@@ -109,7 +109,8 @@ impl DrawableText {
             };
 
             unsafe {
-                let staging_data_ptr = device.logical.map_memory(entity.staging.memory, entity.staging.offset, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+
+				let staging_data_ptr = device.logical.map_memory(entity.staging.memory, entity.staging.offset, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
 
                 let data_ptr = staging_data_ptr as *mut TextData;
                 data_ptr.copy_from_nonoverlapping(&text_data as _, size_gen);
@@ -118,7 +119,7 @@ impl DrawableText {
 				let size = std::mem::size_of_val(&entity.text[..]);
                 data_ptr.copy_from_nonoverlapping(entity.text.as_ptr(), size);
 
-                let data_ptr = staging_data_ptr.offset(size_gen as isize + size as isize) as *mut (i32, i32);
+                let data_ptr = staging_data_ptr.offset(size_gen as isize + entity.capacity as isize * 4) as *mut (i32, i32);
 				let size = std::mem::size_of_val(&entity.kerning_info[..]);
                 data_ptr.copy_from_nonoverlapping(entity.kerning_info.as_ptr(), size);
 
@@ -165,7 +166,6 @@ impl DrawableText {
                 };
 
                 VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer_kern], 2);
-
 
                 let buffer = BufferBundle {
                     buffer: entities[i].uniform.buffer,
