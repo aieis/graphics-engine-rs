@@ -3,7 +3,7 @@ use stb_truetype::*;
 use anyhow::{anyhow, Result, Error};
 
 
-use farbfeld_image::{load_ff, write_ff, RgbaImage};
+use farbfeld_image::{load_ff_from_memory, write_ff, RgbaImage};
 
 const CHARS_LEN: usize = 96;
 const CHARS: [char; CHARS_LEN] = create_target_chars();
@@ -182,34 +182,15 @@ impl FontAtlas {
 		glyph_info.advance as f32 * self.desc.scale
 	}
 
-    pub fn write_atlas(&self, pfx: &str) {
-	    let atlas_output_path = get_font_atlas_path(pfx, &self.desc.info);
-        write_ff(&atlas_output_path, &self.atlas);
-    }
-
-
-    pub fn serialize_atlas(&self, pfx: &str) {
+    pub fn write_atlas_files(&self, pfx: &str) {
 
 	    let atlas_output_path = get_font_atlas_path(pfx, &self.desc.info);
         write_ff(&atlas_output_path, &self.atlas);
 
         let atlas_desc_output_path = get_font_atlas_desc_path(pfx, &self.desc.info);
 
-        // pub info: FontAtlasInfo,
-        // pub scale: f32,
-        // pub ascent: i32,
-        // pub advance_map: [[i32; CHARS_LEN]; CHARS_LEN],
-        // pub glyph_info: [GlyphInfo; CHARS_LEN]
-
         let mut ptr = 0;
         let mut buf = [0; S_BUF];
-
-        // pub struct FontAtlasInfo {
-        //     pub chars_per_col: u32,
-        //     pub chars_per_row: u32,
-        //     pub char_width: u32,
-        //     pub char_height: u32
-        // }
 
         buf[ptr..ptr+S_F32].copy_from_slice(&self.desc.scale.to_be_bytes());
         ptr += S_F32;
@@ -271,20 +252,38 @@ impl FontAtlas {
     }
 
 
-    pub fn parse_atlas_from_file(path: &str) -> Result<Self, Error> {
+    pub fn parse_atlas_from_files(path: &str) -> Result<Self, Error> {
 
-	    let info = parse_font_atlas_info(path)?;
+	    let atlas_info = parse_font_atlas_info(path)?;
 
-		let atlas = match load_ff(path) {
+        let atlas_desc_output_path = get_font_atlas_desc_from_path(path);
+
+        let buf: Vec<u8> = match std::fs::read(atlas_desc_output_path) {
+            Ok(buf) => buf,
+            Err(err) => { return Err(anyhow!(err)); }
+        };
+
+        let atlas_image_data = match std::fs::read(path) {
+            Ok(buf) => buf,
+            Err(err) => { return Err(anyhow!(err)); }            
+        };
+
+        Self::parse_atlas_from_memory(&atlas_info, &buf, &atlas_image_data)
+            
+    }
+
+    pub fn parse_atlas_from_memory(atlas_info: &FontAtlasInfo, buf: &[u8], atlas_image_data: &[u8]) -> Result<Self, Error> {
+        
+		let atlas = match load_ff_from_memory(&atlas_image_data) {
 			Ok(atlas) => atlas,
 			Err(err) => { return Err(anyhow!(err)); }
 		};
 
-
-        // let atlas_desc_output_path = get_font_atlas_desc_path(pfx, &self.desc.info);
+        if buf.len() != S_BUF {
+            return Err(anyhow!(format!("Expected buffer size is: {} byte(s). Read {} byte(s).", S_BUF, buf.len())))
+        }
 
         let mut ptr = 0;
-        let buf = [0u8; S_BUF];
 
 		let scale = f32::from_be_bytes(*<&[u8; S_F32]>::try_from(&buf[ptr..ptr+S_F32]).unwrap());
         ptr += S_F32;
@@ -313,6 +312,14 @@ impl FontAtlas {
 			char_height,
 		};
 
+        if info.chars_per_row != atlas_info.chars_per_row
+			&& info.chars_per_col != atlas_info.chars_per_col
+			&& info.char_width != atlas_info.char_width
+			&& info.char_height != atlas_info.char_height
+        {
+            return Err(anyhow!("Atlas layout data is mismatched."));
+        }
+
         // Advance map time
 
 		let mut advance_map = [[0i32; CHARS_LEN]; CHARS_LEN];
@@ -330,7 +337,7 @@ impl FontAtlas {
 
 		// Write the glyph info
 
-		let mut glyph_info = [0; CHARS_LEN].map(|x| { GlyphInfo { x: 0, y: 0, advance: 0, w: 0, h: 0 } });
+		let mut glyph_info = [0; CHARS_LEN].map(|_x| { GlyphInfo { x: 0, y: 0, advance: 0, w: 0, h: 0 } });
 
         let mut i = 0;
         while i < CHARS_LEN {
@@ -364,7 +371,7 @@ impl FontAtlas {
 
 		Ok(Self {
 			atlas,
-			desc: todo!(),
+			desc,
 		})
 
 	}

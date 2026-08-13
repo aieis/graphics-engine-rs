@@ -34,7 +34,10 @@ pub fn pack_atlas_with_info() {
     let font = InitFont(FONT_BUFFER);
 
 	let font_atlas = FontAtlas::new(&font, FONT_HEIGHT_TARGET);
-    font_atlas.write_atlas(FONT_ATLAS_PATH_PFX);
+    font_atlas.write_atlas_files(FONT_ATLAS_PATH_PFX);
+
+    let path = get_font_atlas_path(FONT_ATLAS_PATH_PFX, &font_atlas.desc.info);
+    let font_atlas = FontAtlas::parse_atlas_from_files(&path).expect("Failed to read written atlas");
 
     let (h, m, s) = get_time_of_day();
 
