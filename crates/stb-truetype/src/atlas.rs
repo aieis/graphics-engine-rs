@@ -254,8 +254,6 @@ impl FontAtlas {
 
     pub fn parse_atlas_from_files(path: &str) -> Result<Self, Error> {
 
-	    let atlas_info = parse_font_atlas_info(path)?;
-
         let atlas_desc_output_path = get_font_atlas_desc_from_path(path);
 
         let buf: Vec<u8> = match std::fs::read(atlas_desc_output_path) {
@@ -265,44 +263,44 @@ impl FontAtlas {
 
         let atlas_image_data = match std::fs::read(path) {
             Ok(buf) => buf,
-            Err(err) => { return Err(anyhow!(err)); }            
+            Err(err) => { return Err(anyhow!(err)); }
         };
 
-        Self::parse_atlas_from_memory(&atlas_info, &buf, &atlas_image_data)
-            
+        Self::parse_atlas_from_memory(&buf, &atlas_image_data)
+
     }
 
-    pub fn parse_atlas_from_memory(atlas_info: &FontAtlasInfo, buf: &[u8], atlas_image_data: &[u8]) -> Result<Self, Error> {
-        
+    pub fn parse_atlas_from_memory(atlas_desc_buf: &[u8], atlas_image_data: &[u8]) -> Result<Self, Error> {
+
 		let atlas = match load_ff_from_memory(&atlas_image_data) {
 			Ok(atlas) => atlas,
 			Err(err) => { return Err(anyhow!(err)); }
 		};
 
-        if buf.len() != S_BUF {
-            return Err(anyhow!(format!("Expected buffer size is: {} byte(s). Read {} byte(s).", S_BUF, buf.len())))
+        if atlas_desc_buf.len() != S_BUF {
+            return Err(anyhow!(format!("Expected buffer size is: {} byte(s). Read {} byte(s).", S_BUF, atlas_desc_buf.len())))
         }
 
         let mut ptr = 0;
 
-		let scale = f32::from_be_bytes(*<&[u8; S_F32]>::try_from(&buf[ptr..ptr+S_F32]).unwrap());
+		let scale = f32::from_be_bytes(*<&[u8; S_F32]>::try_from(&atlas_desc_buf[ptr..ptr+S_F32]).unwrap());
         ptr += S_F32;
 
 
-        let ascent = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+        let ascent = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&atlas_desc_buf[ptr..ptr+S_I32]).unwrap());
         ptr += S_I32;
 
         // Atlas Info Time
-        let chars_per_row = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        let chars_per_row = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&atlas_desc_buf[ptr..ptr+S_U32]).unwrap());
         ptr += S_U32;
 
-        let chars_per_col = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        let chars_per_col = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&atlas_desc_buf[ptr..ptr+S_U32]).unwrap());
         ptr += S_U32;
 
-        let char_width = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        let char_width = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&atlas_desc_buf[ptr..ptr+S_U32]).unwrap());
         ptr += S_U32;
 
-        let char_height = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&buf[ptr..ptr+S_U32]).unwrap());
+        let char_height = u32::from_be_bytes(*<&[u8; S_U32]>::try_from(&atlas_desc_buf[ptr..ptr+S_U32]).unwrap());
         ptr += S_U32;
 
 		let info = FontAtlasInfo {
@@ -312,14 +310,6 @@ impl FontAtlas {
 			char_height,
 		};
 
-        if info.chars_per_row != atlas_info.chars_per_row
-			&& info.chars_per_col != atlas_info.chars_per_col
-			&& info.char_width != atlas_info.char_width
-			&& info.char_height != atlas_info.char_height
-        {
-            return Err(anyhow!("Atlas layout data is mismatched."));
-        }
-
         // Advance map time
 
 		let mut advance_map = [[0i32; CHARS_LEN]; CHARS_LEN];
@@ -328,7 +318,7 @@ impl FontAtlas {
         while i < CHARS_LEN {
             let mut j = 0;
             while j < CHARS_LEN {
-                advance_map[i][j] = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+                advance_map[i][j] = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&atlas_desc_buf[ptr..ptr+S_I32]).unwrap());
 				ptr += S_I32;
 				j += 1;
             }
@@ -341,19 +331,19 @@ impl FontAtlas {
 
         let mut i = 0;
         while i < CHARS_LEN {
-            let x = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+            let x = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&atlas_desc_buf[ptr..ptr+S_I32]).unwrap());
 			ptr += S_I32;
 
-            let y = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+            let y = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&atlas_desc_buf[ptr..ptr+S_I32]).unwrap());
 			ptr += S_I32;
 
-            let advance = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&buf[ptr..ptr+S_I32]).unwrap());
+            let advance = i32::from_be_bytes(*<&[u8; S_I32]>::try_from(&atlas_desc_buf[ptr..ptr+S_I32]).unwrap());
 			ptr += S_I32;
 
-            let w = usize::from_be_bytes(*<&[u8; S_USZ]>::try_from(&buf[ptr..ptr+S_USZ]).unwrap());
+            let w = usize::from_be_bytes(*<&[u8; S_USZ]>::try_from(&atlas_desc_buf[ptr..ptr+S_USZ]).unwrap());
 			ptr += S_USZ;
 
-            let h = usize::from_be_bytes(*<&[u8; S_USZ]>::try_from(&buf[ptr..ptr+S_USZ]).unwrap());
+            let h = usize::from_be_bytes(*<&[u8; S_USZ]>::try_from(&atlas_desc_buf[ptr..ptr+S_USZ]).unwrap());
 			ptr += S_USZ;
 
 			glyph_info[i] = GlyphInfo { x, y, advance, w, h };

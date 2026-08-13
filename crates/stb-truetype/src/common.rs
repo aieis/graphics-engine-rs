@@ -28,7 +28,7 @@ pub struct GlyphInfo {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FontAtlasInfo {
     pub chars_per_row: u32,
     pub chars_per_col: u32,
