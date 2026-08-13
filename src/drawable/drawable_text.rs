@@ -20,7 +20,6 @@ struct TextData {
 
 pub struct DrawableText {
 	pub atlas_info: FontAtlasInfo,
-    pub font_atlas: TextureBundle,
 
     pub position: Vec3,
     pub capacity: usize,
@@ -35,7 +34,7 @@ pub struct DrawableText {
 
 impl DrawableText {
 
-    pub fn new(base: &VkBase, position: Vec3, atlas_info: FontAtlasInfo, font_atlas: TextureBundle, allocator: &mut Allocator, text: &str, capacity: usize) -> Self {
+    pub fn new(base: &VkBase, position: Vec3, atlas_info: FontAtlasInfo, allocator: &mut Allocator, text: &str, capacity: usize) -> Self {
 
         let size = std::mem::size_of::<TextData>() + capacity * 4;
 
@@ -54,7 +53,6 @@ impl DrawableText {
 		let descriptor_sets = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, layout, base.max_in_flight);
 
         DrawableText {
-            font_atlas,
             position,
             capacity,
             text: text_map,
@@ -129,6 +127,35 @@ impl DrawableText {
         return recorded;
     }
 
+    pub fn init_font_atlas(device: &DeviceBundle, font_atlas: &TextureBundle, entities: &[Self])  {
+        for i in 0..entities.len() {
+            for set in entities[i].descriptor_sets.iter() {
+
+                VkBase::update_descriptor_set_textures(&device, *set, &[&font_atlas], 0);
+
+                let size_gen = std::mem::size_of::<TextData>();
+
+                let buffer = BufferBundle {
+                    buffer: entities[i].uniform.buffer,
+                    memory: entities[i].uniform.memory,
+                    offset: entities[i].uniform.offset,
+                    size: size_gen as u64
+                };
+
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer], 2);
+
+                let buffer = BufferBundle {
+                    buffer: entities[i].uniform.buffer,
+                    memory: entities[i].uniform.memory,
+                    offset: entities[i].uniform.offset + size_gen as u64,
+                    size: entities[i].capacity as u64 * 4
+                };
+
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer], 1);
+            }
+        }
+    }
+
 
     pub fn draw(device: &DeviceBundle, cb: vk::CommandBuffer, pso: &GraphicsPipelineBundle, current_swap_image: usize, entities: &[Self])  {
 
@@ -141,29 +168,6 @@ impl DrawableText {
             for i in 0..entities.len() {
 				let set = &entities[i].descriptor_sets[current_swap_image..current_swap_image+1];
 
-                VkBase::update_descriptor_set_textures(&device, set[0], &[&entities[i].font_atlas], 0);
-
-                let size_gen = std::mem::size_of::<TextData>();
-
-                let buffer = BufferBundle {
-                    buffer: entities[i].uniform.buffer,
-                    memory: entities[i].uniform.memory,
-                    offset: entities[i].uniform.offset,
-                    size: size_gen as u64
-                };
-
-                VkBase::update_descriptor_set_buffers(&device, set[0], &[&buffer], 2);
-
-                let buffer = BufferBundle {
-                    buffer: entities[i].uniform.buffer,
-                    memory: entities[i].uniform.memory,
-                    offset: entities[i].uniform.offset + size_gen as u64,
-                    size: entities[i].capacity as u64 * 4
-                };
-
-                VkBase::update_descriptor_set_buffers(&device, set[0], &[&buffer], 1);
-
-
                 device.logical.cmd_bind_descriptor_sets(
                     cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0,
                     &set, &[]);
@@ -174,17 +178,6 @@ impl DrawableText {
     }
 
 
-    pub fn release(device: &DeviceBundle, textures: &mut [Self])
-    {
-        for texture in textures.iter() {
-            unsafe {
-				device.logical.destroy_buffer(texture.font_atlas.staging.buffer, None);
-                device.logical.free_memory(texture.font_atlas.staging.memory, None);
-                device.logical.destroy_image(texture.font_atlas.resource.image, None);
-                device.logical.free_memory(texture.font_atlas.resource.memory, None);
-                device.logical.destroy_image_view(texture.font_atlas.image_view, None);
-                device.logical.destroy_sampler(texture.font_atlas.sampler, None);
-            }
-        }
+    pub fn release(_device: &DeviceBundle, _entities: &mut [Self]) {
     }
 }
