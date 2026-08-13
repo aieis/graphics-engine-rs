@@ -46,6 +46,15 @@ pub fn pack_atlas_with_info() {
 
 	write_ff("./test_outputs/message.ff", &im);
 
+    let bytes = msg.as_bytes();
+    let mut kerning_data = vec![(0i32, 0i32); bytes.len()];
+    font_atlas.pack_kerning_data(&bytes, &mut kerning_data);
+    let im = font_atlas.pack_message_with_kerning_data(&bytes, &kerning_data);
+
+	write_ff("./test_outputs/message_pre_kerned.ff", &im);
+
+
+
 }
 
 fn pack_atlas_sparse() {

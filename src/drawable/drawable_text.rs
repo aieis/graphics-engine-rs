@@ -1,5 +1,5 @@
 use ash::vk;
-use stb_truetype::FontAtlasInfo;
+use stb_truetype::{FontAtlasInfo, FontAtlas};
 
 use crate::geometry::vec3::Vec3;
 use crate::rhi::allocator::{Allocator, BufferType};
@@ -24,6 +24,7 @@ pub struct DrawableText {
     pub position: Vec3,
     pub capacity: usize,
     pub text: Vec<u32>,
+    pub kerning_info: Vec<(i32, i32)>,
 
 	pub descriptor_sets: Vec<vk::DescriptorSet>,
     pub staging: BufferBundle,
@@ -36,7 +37,7 @@ impl DrawableText {
 
     pub fn new(base: &VkBase, position: Vec3, atlas_info: FontAtlasInfo, allocator: &mut Allocator, text: &str, capacity: usize) -> Self {
 
-        let size = std::mem::size_of::<TextData>() + capacity * 4;
+        let size = std::mem::size_of::<TextData>() + capacity * 4 + capacity * 2 * 4;
 
         let staging = allocator.alloc(BufferType::Staging, size as u64).unwrap();
         let uniform = allocator.alloc(BufferType::Uniform, size as u64).unwrap();
@@ -47,6 +48,7 @@ impl DrawableText {
         }
 
         let text_map = bytes.iter().map(|c| { *c as u32 } ).collect::<Vec<_>>();
+        let kerning_info = vec![(0, 0); text_map.len()];
 
 		let pso = &base.graphics_pipelines[ShaderText::ID];
 		let layout = pso.ubo.as_ref().expect("Expected ubo to be defined.").layouts[0];
@@ -56,6 +58,7 @@ impl DrawableText {
             position,
             capacity,
             text: text_map,
+            kerning_info,
             staging,
             uniform,
             dirty: true,
@@ -72,8 +75,16 @@ impl DrawableText {
             bytes = &bytes[0..self.capacity];
         }
         self.text = bytes.iter().map(|c| { *c as u32 } ).collect::<Vec<_>>();
-        self.dirty = true;
 
+        self.dirty = true;
+    }
+
+    pub fn kern_text(&mut self, font: &FontAtlas) {
+        // TODO: this map can be removed by using text as Vec<u8> to begin with
+        let text = self.text.iter().map(|c| { *c as u8 } ).collect::<Vec<_>>();
+        self.kerning_info.resize(self.text.len(), (0, 0));
+        font.pack_kerning_data(&text[..], &mut self.kerning_info);
+        self.dirty = true;
     }
 
     pub fn update(device: &DeviceBundle, cb: vk::CommandBuffer, entities: &mut [Self]) -> bool {
@@ -104,9 +115,12 @@ impl DrawableText {
                 data_ptr.copy_from_nonoverlapping(&text_data as _, size_gen);
 
                 let data_ptr = staging_data_ptr.offset(size_gen as isize) as *mut u32;
-
 				let size = std::mem::size_of_val(&entity.text[..]);
                 data_ptr.copy_from_nonoverlapping(entity.text.as_ptr(), size);
+
+                let data_ptr = staging_data_ptr.offset(size_gen as isize + size as isize) as *mut (i32, i32);
+				let size = std::mem::size_of_val(&entity.kerning_info[..]);
+                data_ptr.copy_from_nonoverlapping(entity.kerning_info.as_ptr(), size);
 
                 device.logical.unmap_memory(entity.staging.memory);
 
@@ -120,20 +134,38 @@ impl DrawableText {
                 device.logical.cmd_copy_buffer(cb, entity.staging.buffer, entity.uniform.buffer, &copy_region);
             }
 
-
             entity.dirty = false;
         }
 
         return recorded;
     }
 
-    pub fn init_font_atlas(device: &DeviceBundle, font_atlas: &TextureBundle, entities: &[Self])  {
+    pub fn init_font_atlas(device: &DeviceBundle, font_atlas: &TextureBundle, glyph_info_buffer: &BufferBundle, entities: &[Self])  {
         for i in 0..entities.len() {
             for set in entities[i].descriptor_sets.iter() {
 
                 VkBase::update_descriptor_set_textures(&device, *set, &[&font_atlas], 0);
 
                 let size_gen = std::mem::size_of::<TextData>();
+
+                let buffer_chars = BufferBundle {
+                    buffer: entities[i].uniform.buffer,
+                    memory: entities[i].uniform.memory,
+                    offset: entities[i].uniform.offset + size_gen as u64,
+                    size: entities[i].capacity as u64 * 4
+                };
+
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer_chars], 1);
+
+                let buffer_kern = BufferBundle {
+                    buffer: entities[i].uniform.buffer,
+                    memory: entities[i].uniform.memory,
+                    offset: entities[i].uniform.offset + size_gen as u64 + buffer_chars.size,
+                    size: entities[i].capacity as u64 * 2 * 4
+                };
+
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer_kern], 2);
+
 
                 let buffer = BufferBundle {
                     buffer: entities[i].uniform.buffer,
@@ -142,16 +174,10 @@ impl DrawableText {
                     size: size_gen as u64
                 };
 
-                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer], 2);
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer], 3);
 
-                let buffer = BufferBundle {
-                    buffer: entities[i].uniform.buffer,
-                    memory: entities[i].uniform.memory,
-                    offset: entities[i].uniform.offset + size_gen as u64,
-                    size: entities[i].capacity as u64 * 4
-                };
+                VkBase::update_descriptor_set_buffers(&device, *set, &[glyph_info_buffer], 4);
 
-                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer], 1);
             }
         }
     }

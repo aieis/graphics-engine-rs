@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result, Error};
 
 use farbfeld_image::{load_ff_from_memory, write_ff, RgbaImage};
 
-const CHARS_LEN: usize = 96;
+pub const CHARS_LEN: usize = 96;
 const CHARS: [char; CHARS_LEN] = create_target_chars();
 
 #[derive(Debug)]
@@ -112,6 +112,74 @@ impl FontAtlas {
         }
     }
 
+    pub fn pack_kerning_data(&self, text: &[u8], kerning_data: &mut [(i32, i32)]) {
+        if text.len() == 0 {
+            return;
+        }
+
+        let baseline = self.desc.ascent as f32 * self.desc.scale;
+
+        let mut prev_char_advance = self.get_char_advance(text[0] as char);
+        let (x, y) = self.get_glyph_inner(text[0] as char);
+
+        kerning_data[0] = (x, baseline as i32 + y);
+
+        let mut x_pos = 0.0;
+
+		for i in 1..text.len(){
+			let c_i   = text[i-1] as usize - 32;
+			let c_i_1 = text[i] as usize - 32;
+			let advance_amount = self.desc.advance_map[c_i][c_i_1] as f32 * self.desc.scale + prev_char_advance;
+			x_pos = x_pos + advance_amount;
+
+            let (x, y) = self.get_glyph_inner(text[i] as char);
+
+            kerning_data[i] = (x_pos as i32 + x, baseline as i32 + y);
+
+			prev_char_advance = self.get_char_advance(text[i] as char);
+		}
+    }
+
+    pub fn pack_message_with_kerning_data(&self, message: &[u8], kerning_data: &[(i32, i32)]) -> RgbaImage {
+		let width  = self.desc.info.char_width * message.len() as u32 * 2;
+		let height = self.desc.info.char_height * 2;
+
+		let mut im = vec![0; (width * height * 4) as usize];
+		let stride = width as usize * 4;
+
+		for i in 0..message.len(){
+            let (px, py) = kerning_data[i];
+            let c_i = message[i] as usize  - 32;
+
+		    let glyph_info = &self.desc.glyph_info[c_i];
+
+            let px = px as usize;
+            let py = py as usize;
+
+            let glyph_col = c_i % self.desc.info.chars_per_row as usize;
+            let glyph_row = c_i / self.desc.info.chars_per_row as usize;
+
+            let atlas_px =   glyph_col   * self.desc.info.char_width as usize;
+            let atlas_py = (glyph_row+1) * self.desc.info.char_height as usize - glyph_info.h;
+            let atlas_stride = (self.desc.info.chars_per_row * self.desc.info.char_width * 4) as usize;
+
+            for y in 0..glyph_info.h {
+			    for x in 0..glyph_info.w {
+                    let src = (atlas_py + y) * atlas_stride + (atlas_px + x) *4;
+                    let dst = (py + y) * stride + (px + x) * 4;
+                    im[dst+2] = 255;
+                    im[dst+3] = self.atlas.data[src+3];
+			    }
+		    }
+		}
+
+		RgbaImage {
+			w: width,
+			h: height,
+			data: im,
+		}
+
+    }
 
 	pub fn pack_message(&self, text: &str) -> RgbaImage {
 
@@ -179,8 +247,17 @@ impl FontAtlas {
 			}
 		}
 
-		glyph_info.advance as f32 * self.desc.scale
+		self.get_char_advance(c)
 	}
+
+    pub fn get_char_advance(&self, c: char) -> f32 {
+        self.desc.glyph_info[c as usize - 32].advance as f32 * self.desc.scale
+    }
+
+    pub fn get_glyph_inner(&self, c: char) -> (i32, i32) {
+        let glyph_info = &self.desc.glyph_info[c as usize - 32];
+        (glyph_info.x, glyph_info.y)
+    }
 
     pub fn write_atlas_files(&self, pfx: &str) {
 

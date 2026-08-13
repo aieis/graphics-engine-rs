@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use ash::vk;
-use stb_truetype::{FontAtlas, parse_font_atlas_info};
+use stb_truetype::{FontAtlas, parse_font_atlas_info, CHARS_LEN};
 use winit::event::ElementState;
 use winit::keyboard::KeyCode;
 
@@ -32,6 +32,14 @@ struct SpecialMeshShaderParams {
     global_camera: f32
 }
 
+struct SharedFontData {
+    atlas: FontAtlas,
+    atlas_texture: TextureBundle,
+
+    staging: BufferBundle,
+    glyph_uniform: BufferBundle,
+}
+
 pub struct SimpleScene
 {
     pub time            : Instant,
@@ -45,8 +53,7 @@ pub struct SimpleScene
     staging: BufferBundle,
     uniform: BufferBundle,
 
-    font_atlas: FontAtlas,
-    font_atlas_texture: TextureBundle,
+    font_data: SharedFontData,
 
     use_global_camera: bool,
     going_down: bool,
@@ -99,7 +106,15 @@ impl SimpleScene
         let font_atlas = FontAtlas::parse_atlas_from_memory(FONT_ATLAS_DESC_DATA, FONT_ATLAS_DATA).expect("Failed to load atlas.");
         let font_atlas_texture = utils::image::create_texture_image(&base.device, font_atlas.atlas.w, font_atlas.atlas.h, (font_atlas.atlas.w * font_atlas.atlas.h * 4) as u64, PixelFormat::RGBA);
         let frame_timer = [DrawableText::new(base, Vec3::new(-0.8, -0.8, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64)];
-        DrawableText::init_font_atlas(&base.device, &font_atlas_texture, &frame_timer);
+
+        let font_data = SharedFontData {
+            atlas: font_atlas,
+            atlas_texture: font_atlas_texture,
+            staging: allocator.alloc(BufferType::Staging, CHARS_LEN as u64 * std::mem::size_of::<u32>() as u64 * 2).unwrap(),
+            glyph_uniform: allocator.alloc(BufferType::Uniform, CHARS_LEN as u64 * std::mem::size_of::<u32>() as u64 * 2).unwrap(),
+        };
+
+        DrawableText::init_font_atlas(&base.device, &font_data.atlas_texture, &font_data.glyph_uniform, &frame_timer);
 
         Self {
             time,
@@ -114,8 +129,7 @@ impl SimpleScene
             initialized: false,
             descriptor_sets,
             previous_time: Instant::now(),
-            font_atlas_texture,
-            font_atlas,
+            font_data,
         }
     }
 
@@ -136,9 +150,7 @@ impl SimpleScene
             _ => {
 
             }
-
         }
-
     }
 
     pub fn update(scenes: &mut [SimpleScene], base: &VkBase, cb: &vk::CommandBuffer, aspect_ratio: f32) {
@@ -194,15 +206,21 @@ impl SimpleScene
 
                 unsafe {
 
-                    let size = scene.font_atlas_texture.staging.size;
-                    let data_ptr = base.device.logical.map_memory(scene.font_atlas_texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                    data_ptr.copy_from_nonoverlapping(scene.font_atlas.atlas.data.as_ptr(), size as usize);
-                    base.device.logical.unmap_memory(scene.font_atlas_texture.staging.memory);
+                    let size = scene.font_data.staging.size;
+                    let data = scene.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w, g.h) });
+                    let data_ptr = base.device.logical.map_memory(scene.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u32;
+                    data_ptr.copy_from_nonoverlapping(data.as_ptr() as _, size as usize);
+                    base.device.logical.unmap_memory(scene.font_data.staging.memory);
 
-					utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.font_atlas_texture);
-                    utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.font_atlas_texture);
-                    utils::image::copy_buffer_to_image(&base.device, *cb, &scene.font_atlas_texture, &scene.font_atlas_texture.staging, scene.font_atlas.atlas.w, scene.font_atlas.atlas.h);
-                    utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.font_atlas_texture);
+                    let size = scene.font_data.atlas_texture.staging.size;
+                    let data_ptr = base.device.logical.map_memory(scene.font_data.atlas_texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                    data_ptr.copy_from_nonoverlapping(scene.font_data.atlas.atlas.data.as_ptr(), size as usize);
+                    base.device.logical.unmap_memory(scene.font_data.atlas_texture.staging.memory);
+
+					utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
+                    utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
+                    utils::image::copy_buffer_to_image(&base.device, *cb, &scene.font_data.atlas_texture, &scene.font_data.atlas_texture.staging, scene.font_data.atlas.atlas.w, scene.font_data.atlas.atlas.h);
+                    utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
                 }
 
                 scene.initialized = true;
@@ -210,7 +228,7 @@ impl SimpleScene
 
 
 			let frame_time_ms = scene.previous_time.elapsed().as_millis();
-			let frame_time = format!("FRAME TIME {} MS  ", frame_time_ms);
+			let frame_time = format!("{:>3} ", frame_time_ms);
 			scene.frame_timer[0].set_text(&frame_time);
 			scene.previous_time = Instant::now();
 
@@ -255,12 +273,12 @@ impl SimpleScene
             DrawableText::release(&base.device, &mut scene.frame_timer);
 
             unsafe {
-			    base.device.logical.destroy_buffer(scene.font_atlas_texture.staging.buffer, None);
-                base.device.logical.free_memory(scene.font_atlas_texture.staging.memory, None);
-                base.device.logical.destroy_image(scene.font_atlas_texture.resource.image, None);
-                base.device.logical.free_memory(scene.font_atlas_texture.resource.memory, None);
-                base.device.logical.destroy_image_view(scene.font_atlas_texture.image_view, None);
-                base.device.logical.destroy_sampler(scene.font_atlas_texture.sampler, None);
+			    base.device.logical.destroy_buffer(scene.font_data.atlas_texture.staging.buffer, None);
+                base.device.logical.free_memory(scene.font_data.atlas_texture.staging.memory, None);
+                base.device.logical.destroy_image(scene.font_data.atlas_texture.resource.image, None);
+                base.device.logical.free_memory(scene.font_data.atlas_texture.resource.memory, None);
+                base.device.logical.destroy_image_view(scene.font_data.atlas_texture.image_view, None);
+                base.device.logical.destroy_sampler(scene.font_data.atlas_texture.sampler, None);
             }
         }
     }
