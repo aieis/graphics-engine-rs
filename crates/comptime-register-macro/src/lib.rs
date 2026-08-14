@@ -61,8 +61,6 @@ pub fn shaders_registry(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    println!("OUTPUT: {:}", output);
-
     output.into()
 }
 

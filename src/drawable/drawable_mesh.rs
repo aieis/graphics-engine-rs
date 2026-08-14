@@ -50,11 +50,10 @@ impl DrawableMesh {
     }
 
     pub fn dirty(&self) -> bool {
-        return self.mesh.dirty_colour || self.mesh.dirty_indices || self.mesh.dirty_vertices;
+        return self.mesh.dirty_colour || self.mesh.dirty_indices || self.mesh.dirty_vertices || self.mesh.dirty_normals;
     }
 
-    pub fn update(device: &DeviceBundle, command_buffer: &vk::CommandBuffer, mesh_bundles: &mut Vec<Self>) -> bool {
-
+    pub fn update(device: &DeviceBundle, command_buffer: vk::CommandBuffer, mesh_bundles: &mut Vec<Self>) -> bool {
         let mut recorded = false;
 
         for mesh_bundle in mesh_bundles.iter_mut() {
@@ -79,7 +78,7 @@ impl DrawableMesh {
                         vk::BufferCopy::default().size(size_vrt)
                     ];
 
-                    device.logical.cmd_copy_buffer(*command_buffer, mesh_bundle.staging.buffer, mesh_bundle.vbo.buffer, &copy_region);
+                    device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.vbo.buffer, &copy_region);
                 }
 
                 if mesh_bundle.mesh.dirty_colour {
@@ -93,7 +92,7 @@ impl DrawableMesh {
                             .size(size_col)
                     ];
 
-                    device.logical.cmd_copy_buffer(*command_buffer, mesh_bundle.staging.buffer, mesh_bundle.col.buffer, &copy_region);
+                    device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.col.buffer, &copy_region);
                 }
 
                 if mesh_bundle.mesh.dirty_normals {
@@ -107,7 +106,7 @@ impl DrawableMesh {
                             .size(size_col)
                     ];
 
-                    device.logical.cmd_copy_buffer(*command_buffer, mesh_bundle.staging.buffer, mesh_bundle.normals.buffer, &copy_region);
+                    device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.normals.buffer, &copy_region);
                 }
 
                 if mesh_bundle.mesh.dirty_indices {
@@ -121,7 +120,7 @@ impl DrawableMesh {
                             .size(size_ind as u64)
                     ];
 
-                    device.logical.cmd_copy_buffer(*command_buffer, mesh_bundle.staging.buffer, mesh_bundle.ind.buffer, &copy_region);
+                    device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.ind.buffer, &copy_region);
 
                 }
             }
@@ -135,15 +134,15 @@ impl DrawableMesh {
         return recorded;
     }
 
-    pub fn draw(device: &DeviceBundle, command_buffer: &vk::CommandBuffer, graphics_pipeline: &GraphicsPipelineBundle, mesh_bundles: &[Self])  {
-        let command_buffer = *command_buffer;
+    pub fn draw(device: &DeviceBundle, cb: vk::CommandBuffer, graphics_pipeline: &GraphicsPipelineBundle, mesh_bundles: &[Self])  {
         unsafe {
-            device.logical.cmd_bind_pipeline(command_buffer, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.graphics);
-            
+            // device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.graphics);
+
             for i in 0..mesh_bundles.len() {
-                device.logical.cmd_bind_vertex_buffers(command_buffer, 0, &[mesh_bundles[i].vbo.buffer, mesh_bundles[i].col.buffer, mesh_bundles[i].normals.buffer], &[0, 0, 0]);
-                device.logical.cmd_bind_index_buffer(command_buffer, mesh_bundles[i].ind.buffer, 0, vk::IndexType::UINT16);
-                device.logical.cmd_draw_indexed(command_buffer, mesh_bundles[i].mesh.indices.len() as u32, 1, 0, 0, 0);
+                let m = &mesh_bundles[i];
+                device.logical.cmd_bind_vertex_buffers(cb, 0, &[m.vbo.buffer, m.col.buffer, m.normals.buffer], &[m.vbo.offset, m.col.offset, m.normals.offset]);
+                device.logical.cmd_bind_index_buffer(cb, m.ind.buffer, 0, vk::IndexType::UINT16);
+                device.logical.cmd_draw_indexed(cb, m.mesh.indices.len() as u32, 1, 0, 0, 0);
             }
         }
     }

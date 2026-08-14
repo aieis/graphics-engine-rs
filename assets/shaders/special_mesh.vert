@@ -29,7 +29,6 @@ vec3 light = vec3(-1, 0, -1);
 
 #define PI 3.141592653589793
 
-
 void main() {
 
     float time   = S.Time;
@@ -39,7 +38,7 @@ void main() {
 
     float STO = 1 - ST*ST;
     vec3  camera_pos = vec3(0, 0, 7);
-    vec3  camera_dir = normalize(vec3(ST, 0, CT));
+    vec3  camera_dir = normalize(vec3(STO, 0, ST));
     vec3  camera_up  = vec3(0, 1, 0);
 
     if (S.GlobalCamera > 0) {
@@ -55,8 +54,7 @@ void main() {
     vec4 world_pos = view * vec4(pos, 1.0);
     world_pos.z *= -1;
 
-
-    mat4 proj = create_projection_matrix(FOV, S.Aspect);
+    mat4 proj = create_projection_matrix(FOV, 1);
     vec4 proj_pos = proj * world_pos;
 
     gl_Position = proj_pos;

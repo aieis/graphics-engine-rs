@@ -73,7 +73,7 @@ void main() {
     float v_x_offset = (OFFSETS[gl_VertexIndex % 6].x + 1.0) / 2.0 * glyph_dims.x;
     float coord_cx_v = (cx + v_x_offset) / (chars_per_row * dims.x);
 
-    float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * glyph_dims.y + dims.y - glyph_dims.y;
+    float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * glyph_dims.y + glyph_dims.y;
     float coord_cy_v = (cy + v_y_offset) / (chars_per_col * dims.y);
 
     vec2 coord = vec2(coord_cx_v, coord_cy_v);

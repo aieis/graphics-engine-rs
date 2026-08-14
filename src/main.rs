@@ -15,21 +15,22 @@ mod components;
 
 use std::time::{Duration, Instant};
 
-use components::sliding_texture::SlidingTexture;
-use devices::record_player::RecordPlayer;
-use drawable::{drawable_mesh::DrawableMesh, drawable_tex::DrawableTexture, drawable2d::Drawable2d};
-use geometry::vec3::Vec3;
-use mesh::{ RectMesh, cube};
-use primitives::{rect::Rect, image::{PixelFormat, Image}};
+use crate::geometry::vec3::Vec3;
 use scene::camera::{Camera, CameraParams, CameraAction};
-use scene_extensions::simple_scene::SimpleScene;
-use utils::{image::{begin_single_time_command, end_single_time_command}, keyboard::KeyboardState};
+use scene_extensions::{simple_scene::SimpleScene, demo_scene::DemoScene};
+use utils::{keyboard::KeyboardState};
 use vk_bundles::*;
 use rhi::allocator::{Allocator, AllocatorSizeInfo, BufferType};
+use shader::*;
 
-use ash::vk;
+use ash::vk::{self, Handle};
 
 use vk_base::VkBase;
+
+enum TargetScene {
+    Demo,
+    Simple
+}
 
 use winit::{
     event::{ElementState, Event, KeyEvent, WindowEvent},
@@ -38,18 +39,17 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+const STARTING_SCENE: TargetScene = TargetScene::Simple;
+
 const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, 10.0);
 const CAMERA_DIRECTION: Vec3 = Vec3::new(0.0, 0.0, -1.0);
 
 struct App {
     base: VkBase,
-    rect_bundles: Vec<Drawable2d>,
-    mesh_bundles: Vec<DrawableMesh>,
-    textures: Vec<DrawableTexture>,
-    sliding_textures: Vec<SlidingTexture>,
-    scenes: Vec<SimpleScene>,
-    video_device: RecordPlayer,
 
+    target_scene: TargetScene,
+    demo_scene: DemoScene,
+    simple_scene: SimpleScene,
 
     camera_staging: BufferBundle,
     camera_uniform: BufferBundle,
@@ -68,8 +68,6 @@ struct App {
     shader_poll_time: Instant
 }
 
-use shader::*;
-
 
 const SHADER_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -86,53 +84,14 @@ impl App {
         };
 
 
-        let video_device = RecordPlayer::from_buffer(include_bytes!("../assets/recordings/record1.rdbin")).unwrap();
         let base = VkBase::new(window, 3, "./assets/shaders", global_descriptor_set_binding);
+
         let mut allocator = Allocator::new(&base, AllocatorSizeInfo {
             staging: 10*1024,
             device_vertex: 10*1024,
             device_index: 10*1024,
             uniform_buffer: 10*1024,
         });
-
-
-        let rect_bundles = vec![
-            Drawable2d::new(&base.device, RectMesh::new(-0.9, -0.9, 0.5, 0.5, [1.0, 0.0, 0.0])),
-            Drawable2d::new(&base.device, RectMesh::new(0.0, 0.0, 0.5, 0.5, [0.0, 0.0, 1.0])),
-            Drawable2d::new(&base.device, RectMesh::new(-0.25, -0.25, 0.5, 0.5, [0.0, 1.0, 1.0]))
-        ];
-
-        let mesh_bundles = vec![
-            DrawableMesh::new(&base.device, cube::make_cube(0.0, 0.0, 0.25, 0.5, [1.0, 0.2, 1.0]))
-        ];
-
-        let scenes = vec![
-            SimpleScene::new(&base, &mut allocator)
-        ];
-
-        let data = unsafe { video_device.current_frame[0..video_device.size() / 2].align_to::<u8>().1.to_vec() };
-        let texture = Image::new(data, video_device.width(), video_device.height(), video_device.format());
-
-        //TODO: Cleanup descriptor pool
-
-        let cb = begin_single_time_command(&base.device, base.spare_command.pool);
-
-        let textures = vec![
-            DrawableTexture::new(&base, cb, Rect::new(0.75, -1.0, 0.25, 0.25), Rect::new(0.0, 0.0, 1.0, 1.0), texture)
-        ];
-
-        let data = unsafe { video_device.current_frame[0..video_device.size() / 2].align_to::<u8>().1.to_vec() };
-        let texture = Image::new(data, video_device.width(), video_device.height(), video_device.format());
-
-        let atlas = farbfeld_image::load_ff("assets/fonts/Atlas-Iosevka-Regular.ff").expect("Could not find font atlas.");
-        let atlas_texture = Image::new(atlas.data, atlas.w, atlas.h, PixelFormat::RGBA);
-
-        let sliding_textures = vec![
-            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.00, -1.0, 0.4, 0.4), Rect::new(0.0, 0.0, 0.2, 0.2), texture), 5.0),
-            SlidingTexture::new(DrawableTexture::new(&base, cb, Rect::new(0.25, -1.0, 0.4, 0.4), Rect::new(0.0, 0.0, 0.2, 0.2), atlas_texture), 5.0)
-        ];
-
-        end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
 
         let camera_staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<CameraParams>() as u64).unwrap();
         let camera_uniform = allocator.alloc(BufferType::Uniform, std::mem::size_of::<CameraParams>() as u64).unwrap();
@@ -152,13 +111,16 @@ impl App {
         let keyboard_state = KeyboardState::new();
 
 
+        let demo_scene = DemoScene::new(&base);
+        let simple_scene = SimpleScene::new(&base, &mut allocator);
+
         Self {
-            video_device,
             base,
-            rect_bundles,
-            mesh_bundles,
-            textures,
-            scenes,
+
+            target_scene: STARTING_SCENE,
+            demo_scene,
+            simple_scene,
+
             camera_staging,
             camera_uniform,
             camera,
@@ -174,7 +136,6 @@ impl App {
 
             shader_poll_time: Instant::now() + SHADER_POLL_INTERVAL,
             close: false,
-            sliding_textures,
         }
     }
 
@@ -186,10 +147,6 @@ impl App {
 		self.current_time = ct;
 
         self.handle_down_keys();
-
-        for mesh_bundle in self.rect_bundles.iter_mut() {
-            mesh_bundle.mesh.transform(0.001, [0.0, 0.0]);
-        }
 
         self.base.cleanup_in_flight_buffers();
 
@@ -210,19 +167,17 @@ impl App {
             self.base.device.logical.begin_command_buffer(cb, &cb_begin_info).unwrap();
         }
 
-        Drawable2d::update(&self.base.device, &cb, &mut self.rect_bundles);
-        DrawableMesh::update(&self.base.device, &cb, &mut self.mesh_bundles);
 
-        let w = self.base.window.inner_size();
-        SimpleScene::update(&mut self.scenes, &self.base, &cb, w.width as f32 / w.height as f32);
+        match self.target_scene {
+            TargetScene::Demo => {
+                self.demo_scene.update(&self.base, cb, self.delta_time);
+            }
 
-
-        if let Some(new_frame) = self.video_device.poll() {
-            self.textures[0].texture_data.copy_to_data(&new_frame);
+            TargetScene::Simple => {
+                let w = self.base.window.inner_size();
+                self.simple_scene.update(&self.base, cb, w.width as f32 / w.height as f32);
+            }
         }
-
-        DrawableTexture::update(&self.base.device, cb, &mut self.textures);
-        SlidingTexture::update(&self.base.device, cb, self.delta_time, &mut self.sliding_textures);
 
         unsafe {
             let data_ptr = self.base.device.logical.map_memory(self.camera_staging.memory, self.camera_staging.offset, self.camera_staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut CameraParams;
@@ -268,13 +223,17 @@ impl App {
             None => { return; }
         };
 
-        DrawableTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.textures);
-        SlidingTexture::draw(&self.base.device, cb, &self.base.graphics_pipelines[ShaderTexture::ID], self.base.current_frame, &self.sliding_textures);
+        match self.target_scene {
+            TargetScene::Demo => {
+                self.demo_scene.draw(&self.base, cb);
+            }
 
-        // Drawable2d::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderRect::ID], &self.rect_bundles);
-        // DrawableMesh::draw(&self.base.device, &cb, &self.base.graphics_pipelines[ShaderMesh::ID], &self.mesh_bundles);
-        let current_image = self.base.current_frame;
-        SimpleScene::draw(&self.scenes, &mut self.base, &cb, current_image, self.global_descriptor_set[current_image]);
+            TargetScene::Simple => {
+                let current_frame = self.base.current_frame;
+                self.simple_scene.draw(&mut self.base, cb, current_frame, self.global_descriptor_set[current_frame]);
+            }
+        }
+
         self.base.render(&cb, image_index);
     }
 
@@ -329,6 +288,7 @@ impl App {
         if self.keyboard_state[KeyCode::KeyQ] {
             self.camera.update(CameraAction::Down, self.delta_time * self.speed);
         }
+
     }
 
     fn handle_key(&mut self, event: KeyEvent) {
@@ -348,8 +308,26 @@ impl App {
                         self.reset_camera();
                     }
 
+                    KeyCode::F1 => {
+                        self.target_scene = TargetScene::Demo;
+                    }
+
+                    KeyCode::F2 => {
+                        self.target_scene = TargetScene::Simple;
+                    }
+
                     k => {
-                        SimpleScene::handle_key(&mut self.scenes, k, event.state, event.repeat);
+
+                        match self.target_scene {
+                            TargetScene::Simple => {
+                                self.simple_scene.handle_key(k, event.state, event.repeat);
+                            },
+
+                            TargetScene::Demo => {
+                                // noting to do
+                            }
+                        }
+
                     }
                 }
             }
@@ -369,25 +347,9 @@ impl App {
 impl Drop for App {
     fn drop(&mut self) {
         unsafe {
-
             let _ = self.base.device.logical.device_wait_idle();
-
-
-            Drawable2d::release(&self.base.device, &mut self.rect_bundles);
-            self.rect_bundles.clear();
-
-            DrawableMesh::release(&self.base.device, &mut self.mesh_bundles);
-            self.mesh_bundles.clear();
-
-            DrawableTexture::release(&self.base.device, &mut self.textures);
-            self.textures.clear();
-
-            SlidingTexture::release(&self.base.device, &mut self.sliding_textures);
-            self.sliding_textures.clear();
-
-            SimpleScene::release(&mut self.scenes, &self.base);
-            self.scenes.clear();
-
+            self.demo_scene.release(&self.base);
+            self.simple_scene.release(&self.base);
             self.allocator.release(&self.base.device);
         }
     }

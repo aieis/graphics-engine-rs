@@ -1,6 +1,6 @@
 use std::{ops, fmt};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C, align(16))]
 pub struct Vec3 {
     pub x: f32,

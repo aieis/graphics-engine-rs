@@ -1,11 +1,13 @@
 use std::time::Instant;
 
 use ash::vk;
-use stb_truetype::{FontAtlas, parse_font_atlas_info, CHARS_LEN};
+use stb_truetype::{FontAtlas, CHARS_LEN};
 use winit::event::ElementState;
 use winit::keyboard::KeyCode;
 
-use crate::drawable::drawable_text::DrawableText;
+use crate::mesh::RectMesh;
+use crate::ShaderRect;
+use crate::drawable::{drawable2d::Drawable2d, drawable_text::DrawableText};
 use crate::geometry::vec3::Vec3;
 use crate::mesh::prism;
 use crate::primitives::image::PixelFormat;
@@ -47,6 +49,7 @@ pub struct SimpleScene
     pub static_meshes  : Vec<DrawableMesh>,
     pub dynamic_meshes : Vec<DrawableMesh>,
 
+    rect_bundles: Vec<Drawable2d>,
 	frame_timer: [DrawableText; 1],
 
 	descriptor_sets: Vec<vk::DescriptorSet>,
@@ -89,6 +92,7 @@ impl SimpleScene
             DrawableMesh::new(&base.device, cube_c),
             DrawableMesh::new(&base.device, cube_d),
             DrawableMesh::new(&base.device, cube_e),
+            DrawableMesh::new(&base.device, prism::make_debug_prism(Vec3::of(0.0), Vec3::of(0.1))),
         ];
 
         let staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<SpecialMeshShaderParams>() as u64).unwrap();
@@ -116,6 +120,10 @@ impl SimpleScene
 
         DrawableText::init_font_atlas(&base.device, &font_data.atlas_texture, &font_data.glyph_uniform, &frame_timer);
 
+        let rect_bundles = vec![
+            Drawable2d::new(&base.device, RectMesh::new(-0.25, -0.25, 0.5, 0.5, [0.0, 0.01, 0.01]))
+        ];
+
         Self {
             time,
             static_meshes,
@@ -130,10 +138,11 @@ impl SimpleScene
             descriptor_sets,
             previous_time: Instant::now(),
             font_data,
+            rect_bundles,
         }
     }
 
-    pub fn handle_key(scenes: &mut [SimpleScene], key: KeyCode, state: ElementState, _repeat: bool) {
+    pub fn handle_key(&mut self, key: KeyCode, state: ElementState, _repeat: bool) {
 
         if state != ElementState::Pressed {
             return;
@@ -142,9 +151,7 @@ impl SimpleScene
         match key {
 
             KeyCode::KeyO => {
-                for scene in scenes.iter_mut() {
-                    scene.use_global_camera = !scene.use_global_camera;
-                }
+                self.use_global_camera = !self.use_global_camera;
             }
 
             _ => {
@@ -153,143 +160,141 @@ impl SimpleScene
         }
     }
 
-    pub fn update(scenes: &mut [SimpleScene], base: &VkBase, cb: &vk::CommandBuffer, aspect_ratio: f32) {
-        for scene in scenes.iter_mut() {
+    pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, aspect_ratio: f32) {
 
-            let mut v = 1e-2;
+        Drawable2d::update(&base.device, cb, &mut self.rect_bundles);
 
-            const TRANSLATION_MAX: f32 = 1.0;
-            if scene.translation_amount >= TRANSLATION_MAX {
-                scene.going_down = !scene.going_down;
-                scene.translation_amount = 0.0;
-            } else {
-                scene.translation_amount += v;
-                v *= (TRANSLATION_MAX - scene.translation_amount) / TRANSLATION_MAX;
-            }
+        let mut v = 1e-2;
 
-            let d = Vec3::Y * 0.5;
-
-            let v = if scene.going_down { d * -v } else { d * v };
-
-            for mesh in scene.dynamic_meshes.iter_mut() {
-                mesh.mesh.translate(v);
-                mesh.mesh.rotate_y(1e-2);
-                mesh.mesh.recompute_normals();
-            }
-
-            DrawableMesh::update(&base.device, &cb, &mut scene.dynamic_meshes);
-            DrawableMesh::update(&base.device, &cb, &mut scene.static_meshes);
-
-            let params = SpecialMeshShaderParams {
-                time: scene.time.elapsed().as_secs_f32(),
-                aspect: aspect_ratio,
-                global_camera: if scene.use_global_camera { 1.0 } else { -1.0 },
-            };
-
-            unsafe {
-                let data_ptr = base.device.logical.map_memory(scene.staging.memory, scene.staging.offset, scene.staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut SpecialMeshShaderParams;
-                data_ptr.copy_from_nonoverlapping(&params as *const SpecialMeshShaderParams, scene.staging.size as usize);
-                base.device.logical.unmap_memory(scene.staging.memory);
-
-                let copy_region = [
-                    vk::BufferCopy::default()
-                        .src_offset(scene.staging.offset)
-                        .dst_offset(scene.uniform.offset)
-                        .size(scene.staging.size)
-                ];
-
-                base.device.logical.cmd_copy_buffer(*cb, scene.staging.buffer, scene.uniform.buffer, &copy_region);
-            }
-
-
-            if !scene.initialized {
-
-                unsafe {
-
-                    let size = scene.font_data.staging.size;
-                    let data: [(u32, u32); CHARS_LEN] = scene.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
-                    let data_ptr = base.device.logical.map_memory(scene.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u32;
-                    data_ptr.copy_from_nonoverlapping(data.as_ptr() as _, size as usize);
-                    base.device.logical.unmap_memory(scene.font_data.staging.memory);
-
-                    let size = scene.font_data.atlas_texture.staging.size;
-                    let data_ptr = base.device.logical.map_memory(scene.font_data.atlas_texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                    data_ptr.copy_from_nonoverlapping(scene.font_data.atlas.atlas.data.as_ptr(), size as usize);
-                    base.device.logical.unmap_memory(scene.font_data.atlas_texture.staging.memory);
-
-					utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
-                    utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
-                    utils::image::copy_buffer_to_image(&base.device, *cb, &scene.font_data.atlas_texture, &scene.font_data.atlas_texture.staging, scene.font_data.atlas.atlas.w, scene.font_data.atlas.atlas.h);
-                    utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, *cb, &scene.font_data.atlas_texture);
-
-					let copy_region = [
-						vk::BufferCopy::default()
-							.src_offset(scene.font_data.staging.offset)
-							.dst_offset(scene.font_data.glyph_uniform.offset)
-							.size(scene.font_data.staging.size)
-					];
-
-					base.device.logical.cmd_copy_buffer(*cb, scene.font_data.staging.buffer, scene.font_data.glyph_uniform.buffer, &copy_region);
-                }
-
-                scene.initialized = true;
-            }
-
-
-			let frame_time_ms = scene.previous_time.elapsed().as_millis();
-			let frame_time = format!("{:>12} ", frame_time_ms);
-			scene.frame_timer[0].set_text(&frame_time);
-			scene.frame_timer[0].kern_text(&scene.font_data.atlas);
-			scene.previous_time = Instant::now();
-
-			DrawableText::update(&base.device, *cb, &mut scene.frame_timer);
-
-
+        const TRANSLATION_MAX: f32 = 1.0;
+        if self.translation_amount >= TRANSLATION_MAX {
+            self.going_down = !self.going_down;
+            self.translation_amount = 0.0;
+        } else {
+            self.translation_amount += v;
+            v *= (TRANSLATION_MAX - self.translation_amount) / TRANSLATION_MAX;
         }
 
+        let d = Vec3::Y * 0.5;
+
+        let v = if self.going_down { d * -v } else { d * v };
+
+        for mesh in self.dynamic_meshes.iter_mut() {
+            mesh.mesh.translate(v);
+            mesh.mesh.rotate_y(1e-2);
+            mesh.mesh.recompute_normals();
+        }
+
+        DrawableMesh::update(&base.device, cb, &mut self.dynamic_meshes);
+        DrawableMesh::update(&base.device, cb, &mut self.static_meshes);
+
+        let params = SpecialMeshShaderParams {
+            time: self.time.elapsed().as_secs_f32(),
+            aspect: aspect_ratio,
+            global_camera: if self.use_global_camera { 1.0 } else { -1.0 },
+        };
+
+        unsafe {
+            let data_ptr = base.device.logical.map_memory(self.staging.memory, self.staging.offset, self.staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut SpecialMeshShaderParams;
+            data_ptr.copy_from_nonoverlapping(&params as *const SpecialMeshShaderParams, self.staging.size as usize);
+            base.device.logical.unmap_memory(self.staging.memory);
+
+            let copy_region = [
+                vk::BufferCopy::default()
+                    .src_offset(self.staging.offset)
+                    .dst_offset(self.uniform.offset)
+                    .size(self.staging.size)
+            ];
+
+            base.device.logical.cmd_copy_buffer(cb, self.staging.buffer, self.uniform.buffer, &copy_region);
+        }
+
+
+        if !self.initialized {
+
+            unsafe {
+
+                let size = self.font_data.staging.size;
+                let data: [(u32, u32); CHARS_LEN] = self.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
+                let data_ptr = base.device.logical.map_memory(self.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u32;
+                data_ptr.copy_from_nonoverlapping(data.as_ptr() as _, size as usize);
+                base.device.logical.unmap_memory(self.font_data.staging.memory);
+
+                let size = self.font_data.atlas_texture.staging.size;
+                let data_ptr = base.device.logical.map_memory(self.font_data.atlas_texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                data_ptr.copy_from_nonoverlapping(self.font_data.atlas.atlas.data.as_ptr(), size as usize);
+                base.device.logical.unmap_memory(self.font_data.atlas_texture.staging.memory);
+
+				utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
+                utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, cb, &self.font_data.atlas_texture);
+                utils::image::copy_buffer_to_image(&base.device, cb, &self.font_data.atlas_texture, &self.font_data.atlas_texture.staging, self.font_data.atlas.atlas.w, self.font_data.atlas.atlas.h);
+                utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
+
+				let copy_region = [
+					vk::BufferCopy::default()
+						.src_offset(self.font_data.staging.offset)
+						.dst_offset(self.font_data.glyph_uniform.offset)
+						.size(self.font_data.staging.size)
+				];
+
+				base.device.logical.cmd_copy_buffer(cb, self.font_data.staging.buffer, self.font_data.glyph_uniform.buffer, &copy_region);
+            }
+
+            self.initialized = true;
+        }
+
+
+		let frame_time_ms = self.previous_time.elapsed().as_millis();
+		let frame_time = format!("{:>12} ", frame_time_ms);
+		self.frame_timer[0].set_text(&frame_time);
+		self.frame_timer[0].kern_text(&self.font_data.atlas);
+		self.previous_time = Instant::now();
+
+		DrawableText::update(&base.device, cb, &mut self.frame_timer);
     }
 
-    pub fn draw(scenes: &[SimpleScene], base: &mut VkBase, cb: &vk::CommandBuffer, current_image: usize, global_descriptor_set: vk::DescriptorSet) {
+    pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize, global_descriptor_set: vk::DescriptorSet) {
+
+        Drawable2d::draw(&base.device, cb, &base.graphics_pipelines[ShaderRect::ID], &self.rect_bundles);
 
         let pso = &base.graphics_pipelines[ShaderSpecialMesh::ID];
 
         unsafe {
-            base.device.logical.cmd_bind_pipeline(*cb, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
+            base.device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
         }
 
         unsafe {
-            base.device.logical.cmd_bind_descriptor_sets(*cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0, &[global_descriptor_set], &[]);
+            base.device.logical.cmd_bind_descriptor_sets(cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0, &[global_descriptor_set], &[]);
         }
 
-        for scene in scenes {
-			let set = &scene.descriptor_sets[current_image..current_image+1];
+		let set = &self.descriptor_sets[current_image..current_image+1];
 
-            unsafe {
-                base.device.logical.cmd_bind_descriptor_sets(*cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 1, set, &[]);
-            }
-
-            DrawableMesh::draw(&base.device, cb, pso, &scene.static_meshes);
-            DrawableMesh::draw(&base.device, cb, pso, &scene.dynamic_meshes);
-			DrawableText::draw(&base.device, *cb, &base.graphics_pipelines[ShaderText::ID], current_image, &scene.frame_timer);
+        unsafe {
+            base.device.logical.cmd_bind_descriptor_sets(cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 1, set, &[]);
         }
+
+        DrawableMesh::draw(&base.device, cb, pso, &self.static_meshes);
+        DrawableMesh::draw(&base.device, cb, pso, &self.dynamic_meshes);
+		DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.frame_timer);
     }
 
-    pub fn release(scenes: &mut [Self], base: &VkBase) {
-        for scene in scenes.iter_mut() {
-            DrawableMesh::release(&base.device, &mut scene.dynamic_meshes);
-            scene.dynamic_meshes.clear();
-            DrawableMesh::release(&base.device, &mut scene.static_meshes);
-            scene.static_meshes.clear();
-            DrawableText::release(&base.device, &mut scene.frame_timer);
+    pub fn release(&mut self, base: &VkBase) {
+        Drawable2d::release(&base.device, &mut self.rect_bundles);
+        self.rect_bundles.clear();
 
-            unsafe {
-			    base.device.logical.destroy_buffer(scene.font_data.atlas_texture.staging.buffer, None);
-                base.device.logical.free_memory(scene.font_data.atlas_texture.staging.memory, None);
-                base.device.logical.destroy_image(scene.font_data.atlas_texture.resource.image, None);
-                base.device.logical.free_memory(scene.font_data.atlas_texture.resource.memory, None);
-                base.device.logical.destroy_image_view(scene.font_data.atlas_texture.image_view, None);
-                base.device.logical.destroy_sampler(scene.font_data.atlas_texture.sampler, None);
-            }
+        DrawableMesh::release(&base.device, &mut self.dynamic_meshes);
+        self.dynamic_meshes.clear();
+        DrawableMesh::release(&base.device, &mut self.static_meshes);
+        self.static_meshes.clear();
+        DrawableText::release(&base.device, &mut self.frame_timer);
+
+        unsafe {
+			base.device.logical.destroy_buffer(self.font_data.atlas_texture.staging.buffer, None);
+            base.device.logical.free_memory(self.font_data.atlas_texture.staging.memory, None);
+            base.device.logical.destroy_image(self.font_data.atlas_texture.resource.image, None);
+            base.device.logical.free_memory(self.font_data.atlas_texture.resource.memory, None);
+            base.device.logical.destroy_image_view(self.font_data.atlas_texture.image_view, None);
+            base.device.logical.destroy_sampler(self.font_data.atlas_texture.sampler, None);
         }
     }
 

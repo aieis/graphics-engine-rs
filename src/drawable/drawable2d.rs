@@ -44,7 +44,7 @@ impl Drawable2d {
         return self.mesh.dirty_colour || self.mesh.dirty_indices || self.mesh.dirty_vertices;
     }
 
-    pub fn update(device: &DeviceBundle, command_buffer: &vk::CommandBuffer, mesh_bundles: &mut Vec<Self>) -> bool {
+    pub fn update(device: &DeviceBundle, command_buffer: vk::CommandBuffer, mesh_bundles: &mut Vec<Self>) -> bool {
 
         let mut recorded = false;
 
@@ -69,7 +69,7 @@ impl Drawable2d {
                         vk::BufferCopy::default().size(size_vrt)
                     ];
 
-                    device.logical.cmd_copy_buffer(*command_buffer, mesh_bundle.staging.buffer, mesh_bundle.vbo.buffer, &copy_region);
+                    device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.vbo.buffer, &copy_region);
                 }
 
                 if mesh_bundle.mesh.dirty_colour {
@@ -83,7 +83,7 @@ impl Drawable2d {
                             .size(size_col)
                     ];
 
-                    device.logical.cmd_copy_buffer(*command_buffer, mesh_bundle.staging.buffer, mesh_bundle.col.buffer, &copy_region);
+                    device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.col.buffer, &copy_region);
                 }
 
                 if mesh_bundle.mesh.dirty_indices {
@@ -97,7 +97,7 @@ impl Drawable2d {
                             .size(size_ind as u64)
                     ];
 
-                    device.logical.cmd_copy_buffer(*command_buffer, mesh_bundle.staging.buffer, mesh_bundle.ind.buffer, &copy_region);
+                    device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.ind.buffer, &copy_region);
 
                 }
             }
@@ -110,8 +110,7 @@ impl Drawable2d {
         return recorded;
     }
 
-    pub fn draw(device: &DeviceBundle, command_buffer: &vk::CommandBuffer, graphics_pipeline: &GraphicsPipelineBundle, mesh_bundles: &[Self])  {
-        let command_buffer = *command_buffer;
+    pub fn draw(device: &DeviceBundle, command_buffer: vk::CommandBuffer, graphics_pipeline: &GraphicsPipelineBundle, mesh_bundles: &[Self])  {
         unsafe {
             device.logical.cmd_bind_pipeline(command_buffer, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.graphics);
             for i in 0..mesh_bundles.len() {
