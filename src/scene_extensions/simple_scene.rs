@@ -5,6 +5,7 @@ use stb_truetype::{FontAtlas, CHARS_LEN};
 use winit::event::ElementState;
 use winit::keyboard::KeyCode;
 
+use crate::utils::buffer;
 use crate::mesh::RectMesh;
 use crate::ShaderRect;
 use crate::drawable::{drawable2d::Drawable2d, drawable_text::DrawableText};
@@ -94,6 +95,15 @@ impl SimpleScene
             DrawableMesh::new(&base.device, cube_e),
             DrawableMesh::new(&base.device, prism::make_debug_prism(Vec3::of(0.0), Vec3::of(0.1))),
         ];
+
+        // let required_memory_flags = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
+        // let usage = vk::BufferUsageFlags::TRANSFER_SRC;
+        // let staging = buffer::create_buffer(&base.device, std::mem::size_of::<SpecialMeshShaderParams>() as u64, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+
+        // let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
+        // let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::UNIFORM_BUFFER;
+        // let uniform = buffer::create_buffer(&base.device, std::mem::size_of::<SpecialMeshShaderParams>() as u64, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+
 
         let staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<SpecialMeshShaderParams>() as u64).unwrap();
         let uniform = allocator.alloc(BufferType::Uniform, std::mem::size_of::<SpecialMeshShaderParams>() as u64).unwrap();
@@ -216,12 +226,12 @@ impl SimpleScene
 
                 let size = self.font_data.staging.size;
                 let data: [(u32, u32); CHARS_LEN] = self.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
-                let data_ptr = base.device.logical.map_memory(self.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u32;
+                let data_ptr = base.device.logical.map_memory(self.font_data.staging.memory, self.font_data.staging.offset, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u32;
                 data_ptr.copy_from_nonoverlapping(data.as_ptr() as _, size as usize);
                 base.device.logical.unmap_memory(self.font_data.staging.memory);
 
                 let size = self.font_data.atlas_texture.staging.size;
-                let data_ptr = base.device.logical.map_memory(self.font_data.atlas_texture.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                let data_ptr = base.device.logical.map_memory(self.font_data.atlas_texture.staging.memory, self.font_data.atlas_texture.staging.offset, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
                 data_ptr.copy_from_nonoverlapping(self.font_data.atlas.atlas.data.as_ptr(), size as usize);
                 base.device.logical.unmap_memory(self.font_data.atlas_texture.staging.memory);
 

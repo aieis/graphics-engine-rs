@@ -8,7 +8,7 @@ use crate::vk_bundles::BufferBundle;
 use crate::{DeviceBundle, ImageBundle, TextureBundle};
 use crate::primitives::image::PixelFormat;
 
-use super::buffer::create_buffer;
+use super::buffer::create_buffer_with_memory;
 use super::common::find_memory_type;
 
 pub fn create_image(device: &DeviceBundle, width: u32, height: u32, format: vk::Format, tiling: vk::ImageTiling, usage: vk::ImageUsageFlags, properties: vk::MemoryPropertyFlags) -> Result<ImageBundle> {
@@ -88,7 +88,7 @@ pub fn create_texture_image(device: &DeviceBundle, image_width: u32, image_heigh
     let (vk_format, aspect_flags) = format_properties(format);
 
     let required_memory_properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
-    let staging = create_buffer(device, image_size, vk::BufferUsageFlags::TRANSFER_SRC, required_memory_properties).unwrap();
+    let staging = create_buffer_with_memory(device, image_size, vk::BufferUsageFlags::TRANSFER_SRC, required_memory_properties).unwrap();
 
     let resource = create_image(device, image_width, image_height, vk_format,
                              vk::ImageTiling::OPTIMAL,

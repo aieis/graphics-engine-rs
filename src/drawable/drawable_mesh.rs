@@ -27,23 +27,23 @@ impl DrawableMesh {
 
         let required_memory_flags = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
         let usage = vk::BufferUsageFlags::TRANSFER_SRC;
-        let staging = buffer::create_buffer(device, size_staging, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+        let staging = buffer::create_buffer_with_memory(device, size_staging, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
         let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
         let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER;
-        let vbo = buffer::create_buffer(device, size_vrt, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+        let vbo = buffer::create_buffer_with_memory(device, size_vrt, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
         let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
         let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER;
-        let col = buffer::create_buffer(device, size_col, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+        let col = buffer::create_buffer_with_memory(device, size_col, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
         let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
         let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER;
-        let normals = buffer::create_buffer(device, size_vrt, usage, required_memory_flags).expect("Failed to create normals buffer.");
+        let normals = buffer::create_buffer_with_memory(device, size_vrt, usage, required_memory_flags).expect("Failed to create normals buffer.");
 
         let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
         let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER;
-        let ind = buffer::create_buffer(device, size_ind, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+        let ind = buffer::create_buffer_with_memory(device, size_ind, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
 
         DrawableMesh { mesh, vbo, col, ind, normals, staging}
@@ -69,54 +69,67 @@ impl DrawableMesh {
             let size_normals = mesh_bundle.mesh.size_normals() as u64;
 
             unsafe {
+
+                let staging_offset = mesh_bundle.staging.offset;
                 if mesh_bundle.mesh.dirty_vertices {
-                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, 0, size_vrt, vk::MemoryMapFlags::empty()).unwrap() as *mut Vec3;
+                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, staging_offset, size_vrt, vk::MemoryMapFlags::empty()).unwrap() as *mut Vec3;
                     data_ptr.copy_from_nonoverlapping(mesh_bundle.mesh.vertices.as_ptr(), mesh_bundle.mesh.vertices.len());
                     device.logical.unmap_memory(mesh_bundle.staging.memory);
 
                     let copy_region = [
-                        vk::BufferCopy::default().size(size_vrt)
+                        vk::BufferCopy::default()
+                            .src_offset(staging_offset)
+                            .dst_offset(mesh_bundle.vbo.offset)
+                            .size(size_vrt)
                     ];
 
                     device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.vbo.buffer, &copy_region);
                 }
 
+                let staging_offset = mesh_bundle.staging.offset + size_vrt;
+
                 if mesh_bundle.mesh.dirty_colour {
-                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, size_vrt, size_col, vk::MemoryMapFlags::empty()).unwrap() as *mut Vec3;
+                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, staging_offset, size_col, vk::MemoryMapFlags::empty()).unwrap() as *mut Vec3;
                     data_ptr.copy_from_nonoverlapping(mesh_bundle.mesh.colour.as_ptr(), mesh_bundle.mesh.colour.len());
                     device.logical.unmap_memory(mesh_bundle.staging.memory);
 
                     let copy_region = [
                         vk::BufferCopy::default()
-                            .src_offset(size_vrt)
+                            .src_offset(staging_offset)
+                            .dst_offset(mesh_bundle.col.offset)
                             .size(size_col)
                     ];
 
                     device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.col.buffer, &copy_region);
                 }
 
+                let staging_offset = mesh_bundle.staging.offset + size_vrt + size_col;
                 if mesh_bundle.mesh.dirty_normals {
-                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, size_vrt+size_col, size_normals, vk::MemoryMapFlags::empty()).unwrap() as *mut Vec3;
+                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, staging_offset, size_normals, vk::MemoryMapFlags::empty()).unwrap() as *mut Vec3;
                     data_ptr.copy_from_nonoverlapping(mesh_bundle.mesh.normals.as_ptr(), mesh_bundle.mesh.normals.len());
                     device.logical.unmap_memory(mesh_bundle.staging.memory);
 
                     let copy_region = [
                         vk::BufferCopy::default()
-                            .src_offset(size_vrt+size_col)
+                            .src_offset(staging_offset)
+                            .dst_offset(mesh_bundle.normals.offset)
                             .size(size_col)
                     ];
 
                     device.logical.cmd_copy_buffer(command_buffer, mesh_bundle.staging.buffer, mesh_bundle.normals.buffer, &copy_region);
                 }
 
+                let staging_offset = mesh_bundle.staging.offset + size_vrt + size_col + size_normals;
+
                 if mesh_bundle.mesh.dirty_indices {
-                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, size_vrt+size_col+size_normals, size_ind, vk::MemoryMapFlags::empty()).unwrap() as *mut u16;
+                    let data_ptr = device.logical.map_memory(mesh_bundle.staging.memory, staging_offset, size_ind, vk::MemoryMapFlags::empty()).unwrap() as *mut u16;
                     data_ptr.copy_from_nonoverlapping(mesh_bundle.mesh.indices.as_ptr(), mesh_bundle.mesh.indices.len());
                     device.logical.unmap_memory(mesh_bundle.staging.memory);
 
                     let copy_region = [
                         vk::BufferCopy::default()
-                            .src_offset(size_vrt+size_col+size_normals)
+                            .src_offset(staging_offset)
+                            .dst_offset(mesh_bundle.ind.offset)
                             .size(size_ind as u64)
                     ];
 

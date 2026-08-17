@@ -2,7 +2,7 @@ use ash::vk;
 
 use crate::{utils::buffer, vk_base::VkBase, vk_bundles::{BufferBundle, DeviceBundle}};
 
-
+#[derive(Debug)]
 pub enum BufferType {
 
     /* Properties: HOST_VISIBLE | HOST_COHERENT
@@ -60,7 +60,7 @@ impl Allocator {
             let size = sizes.staging;
             let required_memory_flags = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
             let usage = vk::BufferUsageFlags::TRANSFER_SRC;
-            let heap = buffer::create_buffer(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
+            let heap = buffer::create_buffer_with_memory(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
             let mem_requirements = unsafe { base.device.logical.get_buffer_memory_requirements(heap.buffer) };
             let align = mem_requirements.alignment;
             AllocatorHeap { heap, offset, size, align, waste: 0 }
@@ -70,7 +70,7 @@ impl Allocator {
             let size = sizes.device_vertex;
             let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
             let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER;
-            let heap = buffer::create_buffer(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
+            let heap = buffer::create_buffer_with_memory(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
             let mem_requirements = unsafe { base.device.logical.get_buffer_memory_requirements(heap.buffer) };
             let align = mem_requirements.alignment;
             AllocatorHeap { heap, offset, size, align, waste: 0 }
@@ -81,7 +81,7 @@ impl Allocator {
             let size = sizes.device_index;
             let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
             let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER;
-            let heap = buffer::create_buffer(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
+            let heap = buffer::create_buffer_with_memory(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
             let mem_requirements = unsafe { base.device.logical.get_buffer_memory_requirements(heap.buffer) };
             let align = mem_requirements.alignment;
             AllocatorHeap { heap, offset, size, align, waste: 0 }
@@ -91,7 +91,7 @@ impl Allocator {
             let size = sizes.uniform_buffer;
             let required_memory_flags = vk::MemoryPropertyFlags::DEVICE_LOCAL;
             let usage = vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::UNIFORM_BUFFER;
-            let heap = buffer::create_buffer(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
+            let heap = buffer::create_buffer_with_memory(&base.device, size, usage, required_memory_flags).expect("Failed to create buffer.");
             let mem_requirements = unsafe { base.device.logical.get_buffer_memory_requirements(heap.buffer) };
             let align = mem_requirements.alignment;
             AllocatorHeap { heap, offset, size, align, waste: 0 }
@@ -131,6 +131,7 @@ impl Allocator {
         if incr != size {
             heap.waste += incr - size;
         }
+
 
         heap.offset += incr;
 

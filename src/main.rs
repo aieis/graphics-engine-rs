@@ -23,14 +23,9 @@ use vk_bundles::*;
 use rhi::allocator::{Allocator, AllocatorSizeInfo, BufferType};
 use shader::*;
 
-use ash::vk::{self, Handle};
+use ash::vk;
 
 use vk_base::VkBase;
-
-enum TargetScene {
-    Demo,
-    Simple
-}
 
 use winit::{
     event::{ElementState, Event, KeyEvent, WindowEvent},
@@ -39,7 +34,14 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-const STARTING_SCENE: TargetScene = TargetScene::Simple;
+
+enum TargetScene {
+    Demo,
+    Simple,
+    Empty
+}
+
+const STARTING_SCENE: TargetScene = TargetScene::Empty;
 
 const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, 10.0);
 const CAMERA_DIRECTION: Vec3 = Vec3::new(0.0, 0.0, -1.0);
@@ -93,6 +95,15 @@ impl App {
             uniform_buffer: 10*1024,
         });
 
+        let current_time = Instant::now();
+        let delta_time   = 16.0e-3;
+        let speed        = 0.05;
+
+        let keyboard_state = KeyboardState::new();
+
+        let demo_scene = DemoScene::new(&base);
+        let simple_scene = SimpleScene::new(&base, &mut allocator);
+
         let camera_staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<CameraParams>() as u64).unwrap();
         let camera_uniform = allocator.alloc(BufferType::Uniform, std::mem::size_of::<CameraParams>() as u64).unwrap();
         let camera = Self::make_camera();
@@ -103,16 +114,6 @@ impl App {
         for descriptor_set in global_descriptor_set.iter() {
             VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&camera_uniform], 0);
         }
-
-        let current_time = Instant::now();
-        let delta_time   = 16.0e-3;
-        let speed        = 0.05;
-
-        let keyboard_state = KeyboardState::new();
-
-
-        let demo_scene = DemoScene::new(&base);
-        let simple_scene = SimpleScene::new(&base, &mut allocator);
 
         Self {
             base,
@@ -167,18 +168,6 @@ impl App {
             self.base.device.logical.begin_command_buffer(cb, &cb_begin_info).unwrap();
         }
 
-
-        match self.target_scene {
-            TargetScene::Demo => {
-                self.demo_scene.update(&self.base, cb, self.delta_time);
-            }
-
-            TargetScene::Simple => {
-                let w = self.base.window.inner_size();
-                self.simple_scene.update(&self.base, cb, w.width as f32 / w.height as f32);
-            }
-        }
-
         unsafe {
             let data_ptr = self.base.device.logical.map_memory(self.camera_staging.memory, self.camera_staging.offset, self.camera_staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut CameraParams;
             data_ptr.copy_from_nonoverlapping(&self.camera.params  as *const CameraParams, self.camera_staging.size as usize);
@@ -193,7 +182,22 @@ impl App {
 
             self.base.device.logical.cmd_copy_buffer(cb, self.camera_staging.buffer, self.camera_uniform.buffer, &copy_region);
         }
+        
 
+        match self.target_scene {
+            TargetScene::Demo => {
+                self.demo_scene.update(&self.base, cb, self.delta_time);
+            }
+
+            TargetScene::Simple => {
+                let w = self.base.window.inner_size();
+                self.simple_scene.update(&self.base, cb, w.width as f32 / w.height as f32);
+            }
+
+            TargetScene::Empty => {
+                // Do nothing
+            },
+        }
 
         unsafe { self.base.device.logical.end_command_buffer(cb).unwrap(); }
 
@@ -232,6 +236,10 @@ impl App {
                 let current_frame = self.base.current_frame;
                 self.simple_scene.draw(&mut self.base, cb, current_frame, self.global_descriptor_set[current_frame]);
             }
+
+            TargetScene::Empty => {
+                // Do nothing
+            },
         }
 
         self.base.render(&cb, image_index);
@@ -309,12 +317,17 @@ impl App {
                     }
 
                     KeyCode::F1 => {
-                        self.target_scene = TargetScene::Demo;
+                        self.target_scene = TargetScene::Empty;
                     }
 
                     KeyCode::F2 => {
+                        self.target_scene = TargetScene::Demo;
+                    }
+
+                    KeyCode::F3 => {
                         self.target_scene = TargetScene::Simple;
                     }
+
 
                     k => {
 
@@ -323,9 +336,9 @@ impl App {
                                 self.simple_scene.handle_key(k, event.state, event.repeat);
                             },
 
-                            TargetScene::Demo => {
+                            _ => {
                                 // noting to do
-                            }
+                            },
                         }
 
                     }

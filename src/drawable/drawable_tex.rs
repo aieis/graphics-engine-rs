@@ -37,15 +37,15 @@ impl DrawableTexture {
 
         let required_memory_flags = vk::MemoryPropertyFlags::HOST_VISIBLE;
         let usage = vk::BufferUsageFlags::VERTEX_BUFFER;
-        let vbo = utils::buffer::create_buffer(device, RECT_SIZE_VRT, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+        let vbo = utils::buffer::create_buffer_with_memory(device, RECT_SIZE_VRT, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
         let required_memory_flags = vk::MemoryPropertyFlags::HOST_VISIBLE;
         let usage = vk::BufferUsageFlags::VERTEX_BUFFER;
-        let coords = utils::buffer::create_buffer(device, RECT_SIZE_VRT, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+        let coords = utils::buffer::create_buffer_with_memory(device, RECT_SIZE_VRT, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
         let required_memory_flags = vk::MemoryPropertyFlags::HOST_VISIBLE;
         let usage = vk::BufferUsageFlags::INDEX_BUFFER;
-        let ind = utils::buffer::create_buffer(device, RECT_SIZE_IND, usage, required_memory_flags).expect("Failed to create vertex buffer.");
+        let ind = utils::buffer::create_buffer_with_memory(device, RECT_SIZE_IND, usage, required_memory_flags).expect("Failed to create vertex buffer.");
 
 		let pso = &base.graphics_pipelines[ShaderTexture::ID];
 		let layout = pso.ubo.as_ref().expect("Expected ubo to be defined.").layouts[0];
@@ -76,28 +76,28 @@ impl DrawableTexture {
 
             unsafe {
                 if !entity.initialized {
-                    let data_ptr = device.logical.map_memory(entity.ind.memory, 0, RECT_SIZE_IND, vk::MemoryMapFlags::empty()).unwrap() as *mut u16;
+                    let data_ptr = device.logical.map_memory(entity.ind.memory, entity.ind.offset, RECT_SIZE_IND, vk::MemoryMapFlags::empty()).unwrap() as *mut u16;
                     data_ptr.copy_from_nonoverlapping(RECT_INDICES.as_ptr(), RECT_INDICES.len());
                     device.logical.unmap_memory(entity.ind.memory);
                     entity.initialized = true;
                 }
 
                 if entity.screen_span_updated {
-                    let data_ptr = device.logical.map_memory(entity.vbo.memory, 0, RECT_SIZE_VRT, vk::MemoryMapFlags::empty()).unwrap() as *mut [f32; 2];
+                    let data_ptr = device.logical.map_memory(entity.vbo.memory, entity.vbo.offset, RECT_SIZE_VRT, vk::MemoryMapFlags::empty()).unwrap() as *mut [f32; 2];
                     data_ptr.copy_from_nonoverlapping(entity.screen_span.vertices.as_ptr(), entity.screen_span.vertices.len());
                     device.logical.unmap_memory(entity.vbo.memory);
                     entity.screen_span_updated = false;
                 }
 
                 if entity.texture_span_updated {
-                    let data_ptr = device.logical.map_memory(entity.coords.memory, 0, RECT_SIZE_VRT as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut [f32; 2];
+                    let data_ptr = device.logical.map_memory(entity.coords.memory, entity.coords.offset, RECT_SIZE_VRT as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut [f32; 2];
                     data_ptr.copy_from_nonoverlapping(entity.texture_span.vertices.as_ptr(), entity.screen_span.vertices.len());
                     device.logical.unmap_memory(entity.coords.memory);
                     entity.texture_span_updated = false;
                 }
 
                 if entity.texture_data.dirty {
-                    let data_ptr = device.logical.map_memory(entity.texture.staging.memory, 0, texture_size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                    let data_ptr = device.logical.map_memory(entity.texture.staging.memory, entity.texture.staging.offset, texture_size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
                     data_ptr.copy_from_nonoverlapping(entity.texture_data.data.as_ptr(), texture_size as usize);
                     device.logical.unmap_memory(entity.texture.staging.memory);
 
