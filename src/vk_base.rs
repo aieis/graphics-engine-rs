@@ -848,7 +848,7 @@ impl VkBase {
     /* Create descriptor sets */
     fn create_descriptor_pool(device: &DeviceBundle, swapchain_images_size: usize) -> vk::DescriptorPool {
 
-		let mul = 6;
+		let mul = 7;
         let pool_sizes = [
             vk::DescriptorPoolSize { descriptor_count: swapchain_images_size as u32 * mul, ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER },
             vk::DescriptorPoolSize { descriptor_count: swapchain_images_size as u32 * mul, ty: vk::DescriptorType::UNIFORM_BUFFER },

@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 
 use crate::geometry::vec3::Vec3;
 use scene::camera::{Camera, CameraParams, CameraAction};
-use scene_extensions::{simple_scene::SimpleScene, demo_scene::DemoScene};
+use scene_extensions::{demo_scene::DemoScene, simple_scene::SimpleScene, text_scene::TextScene};
 use utils::{keyboard::KeyboardState};
 use vk_bundles::*;
 use rhi::allocator::{Allocator, AllocatorSizeInfo, BufferType};
@@ -38,10 +38,11 @@ use winit::{
 enum TargetScene {
     Demo,
     Simple,
+    Text,
     Empty
 }
 
-const STARTING_SCENE: TargetScene = TargetScene::Simple;
+const STARTING_SCENE: TargetScene = TargetScene::Text;
 
 const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, 10.0);
 const CAMERA_DIRECTION: Vec3 = Vec3::new(0.0, 0.0, -1.0);
@@ -52,6 +53,7 @@ struct App {
     target_scene: TargetScene,
     demo_scene: DemoScene,
     simple_scene: SimpleScene,
+    text_scene: TextScene,
 
     camera_staging: BufferBundle,
     camera_uniform: BufferBundle,
@@ -108,6 +110,7 @@ impl App {
 
         let demo_scene = DemoScene::new(&base);
         let simple_scene = SimpleScene::new(&base, &mut allocator);
+        let text_scene = TextScene::new(&base, &mut allocator);
 
         let global_descriptor_set = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, base.global_descriptor_set_layout, base.max_in_flight);
 
@@ -138,6 +141,7 @@ impl App {
 
             shader_poll_time: Instant::now() + SHADER_POLL_INTERVAL,
             close: false,
+            text_scene,
         }
     }
 
@@ -196,6 +200,11 @@ impl App {
                 self.simple_scene.update(&self.base, cb, w.width as f32 / w.height as f32);
             }
 
+            TargetScene::Text => {
+                let w = self.base.window.inner_size();
+                self.text_scene.update(&self.base, cb, w.width as f32 / w.height as f32);
+            }
+
             TargetScene::Empty => {
                 // Do nothing
             },
@@ -237,6 +246,11 @@ impl App {
             TargetScene::Simple => {
                 let current_frame = self.base.current_frame;
                 self.simple_scene.draw(&mut self.base, cb, current_frame, self.global_descriptor_set[current_frame]);
+            }
+
+            TargetScene::Text => {
+                let current_frame = self.base.current_frame;
+                self.text_scene.draw(&mut self.base, cb, current_frame);
             }
 
             TargetScene::Empty => {
@@ -330,6 +344,10 @@ impl App {
                         self.target_scene = TargetScene::Simple;
                     }
 
+                    KeyCode::F4 => {
+                        self.target_scene = TargetScene::Text;
+                    }
+
 
                     k => {
 
@@ -337,6 +355,10 @@ impl App {
                             TargetScene::Simple => {
                                 self.simple_scene.handle_key(k, event.state, event.repeat);
                             },
+
+                            TargetScene::Text => {
+                                self.text_scene.handle_key(k, event.state, event.repeat);
+                            }
 
                             _ => {
                                 // noting to do
@@ -365,6 +387,7 @@ impl Drop for App {
             let _ = self.base.device.logical.device_wait_idle();
             self.demo_scene.release(&self.base);
             self.simple_scene.release(&self.base);
+            self.text_scene.release(&self.base);
             self.allocator.release(&self.base.device);
         }
     }
