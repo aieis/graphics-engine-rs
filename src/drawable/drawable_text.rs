@@ -1,4 +1,4 @@
-use ash::vk;
+ use ash::vk;
 use stb_truetype::{FontAtlasInfo, FontAtlas};
 
 use crate::geometry::vec3::Vec3;
@@ -27,8 +27,12 @@ pub struct DrawableText {
     pub kerning_info: Vec<(i32, i32)>,
 
 	pub descriptor_sets: Vec<vk::DescriptorSet>,
-    pub staging: BufferBundle,
-    pub uniform: BufferBundle,
+    pub staging_info: BufferBundle,
+    pub staging_content: BufferBundle,
+    pub staging_kerning: BufferBundle,
+    pub uniform_info: BufferBundle,
+    pub uniform_content: BufferBundle,
+    pub uniform_kerning: BufferBundle,
 
     pub dirty: bool
 }
@@ -39,8 +43,12 @@ impl DrawableText {
 
         let size = std::mem::size_of::<TextData>() + capacity * 4 + capacity * 2 * 4;
 
-        let staging = allocator.alloc(BufferType::Staging, size as u64).unwrap();
-        let uniform = allocator.alloc(BufferType::Uniform, size as u64).unwrap();
+        let staging_info    = allocator.alloc(BufferType::Staging, std::mem::size_of::<TextData>() as u64).unwrap();
+        let staging_content = allocator.alloc(BufferType::Staging, capacity as u64 * 4).unwrap();
+        let staging_kerning = allocator.alloc(BufferType::Staging, capacity as u64 * 8).unwrap();
+        let uniform_info    = allocator.alloc(BufferType::Uniform, std::mem::size_of::<TextData>() as u64).unwrap();
+        let uniform_content = allocator.alloc(BufferType::Uniform, capacity as u64 * 4).unwrap();
+        let uniform_kerning = allocator.alloc(BufferType::Uniform, capacity as u64 * 8).unwrap();
 
         let mut bytes = text.as_bytes();
         if bytes.len() > capacity {
@@ -59,8 +67,12 @@ impl DrawableText {
             capacity,
             text: text_map,
             kerning_info,
-            staging,
-            uniform,
+            staging_info,
+            staging_content,
+            staging_kerning,
+            uniform_info,
+            uniform_content,
+            uniform_kerning,
             dirty: true,
             descriptor_sets,
             atlas_info,
@@ -110,29 +122,50 @@ impl DrawableText {
 
             unsafe {
 
-				let staging_data_ptr = device.logical.map_memory(entity.staging.memory, entity.staging.offset, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-
-                let data_ptr = staging_data_ptr as *mut TextData;
+				let data_ptr = device.logical.map_memory(entity.staging_info.memory, 0, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                let data_ptr = data_ptr.offset(entity.staging_info.offset as isize) as * mut TextData;
                 data_ptr.copy_from_nonoverlapping(&text_data as _, size_gen);
+                device.logical.unmap_memory(entity.staging_info.memory);
 
-                let data_ptr = staging_data_ptr.offset(size_gen as isize) as *mut u32;
+
+				let data_ptr = device.logical.map_memory(entity.staging_content.memory, 0, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                let data_ptr = data_ptr.offset(entity.staging_content.offset as isize) as * mut u32;
 				let size = std::mem::size_of_val(&entity.text[..]);
                 data_ptr.copy_from_nonoverlapping(entity.text.as_ptr(), size);
+                device.logical.unmap_memory(entity.staging_content.memory);
 
-                let data_ptr = staging_data_ptr.offset(size_gen as isize + entity.capacity as isize * 4) as *mut (i32, i32);
+				let data_ptr = device.logical.map_memory(entity.staging_kerning.memory, 0, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                let data_ptr = data_ptr.offset(entity.staging_kerning.offset as isize) as * mut (i32, i32);
 				let size = std::mem::size_of_val(&entity.kerning_info[..]);
                 data_ptr.copy_from_nonoverlapping(entity.kerning_info.as_ptr(), size);
-
-                device.logical.unmap_memory(entity.staging.memory);
+                device.logical.unmap_memory(entity.staging_kerning.memory);
 
                 let copy_region = [
                     vk::BufferCopy::default()
-                        .src_offset(entity.staging.offset)
-                        .dst_offset(entity.uniform.offset)
-                        .size(entity.staging.size)
+                        .src_offset(entity.staging_info.offset)
+                        .dst_offset(entity.uniform_info.offset)
+                        .size(entity.uniform_info.size)
                 ];
 
-                device.logical.cmd_copy_buffer(cb, entity.staging.buffer, entity.uniform.buffer, &copy_region);
+                device.logical.cmd_copy_buffer(cb, entity.staging_info.buffer, entity.uniform_info.buffer, &copy_region);
+
+                let copy_region = [
+                    vk::BufferCopy::default()
+                        .src_offset(entity.staging_content.offset)
+                        .dst_offset(entity.uniform_content.offset)
+                        .size(entity.uniform_content.size)
+                ];
+
+                device.logical.cmd_copy_buffer(cb, entity.staging_content.buffer, entity.uniform_content.buffer, &copy_region);
+
+                let copy_region = [
+                    vk::BufferCopy::default()
+                        .src_offset(entity.staging_kerning.offset)
+                        .dst_offset(entity.uniform_kerning.offset)
+                        .size(entity.uniform_kerning.size)
+                ];
+
+                device.logical.cmd_copy_buffer(cb, entity.staging_kerning.buffer, entity.uniform_kerning.buffer, &copy_region);
             }
 
             entity.dirty = false;
@@ -144,40 +177,11 @@ impl DrawableText {
     pub fn init_font_atlas(device: &DeviceBundle, font_atlas: &TextureBundle, glyph_info_buffer: &BufferBundle, entities: &[Self])  {
         for i in 0..entities.len() {
             for set in entities[i].descriptor_sets.iter() {
-
                 VkBase::update_descriptor_set_textures(&device, *set, &[&font_atlas], 0);
-
-                let size_gen = std::mem::size_of::<TextData>();
-
-                let buffer_chars = BufferBundle {
-                    buffer: entities[i].uniform.buffer,
-                    memory: entities[i].uniform.memory,
-                    offset: entities[i].uniform.offset + size_gen as u64,
-                    size: entities[i].capacity as u64 * 4
-                };
-
-                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer_chars], 1);
-
-                let buffer_kern = BufferBundle {
-                    buffer: entities[i].uniform.buffer,
-                    memory: entities[i].uniform.memory,
-                    offset: entities[i].uniform.offset + size_gen as u64 + buffer_chars.size,
-                    size: entities[i].capacity as u64 * 2 * 4
-                };
-
-                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer_kern], 2);
-
-                let buffer = BufferBundle {
-                    buffer: entities[i].uniform.buffer,
-                    memory: entities[i].uniform.memory,
-                    offset: entities[i].uniform.offset,
-                    size: size_gen as u64
-                };
-
-                VkBase::update_descriptor_set_buffers(&device, *set, &[&buffer], 3);
-
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&entities[i].uniform_content], 1);
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&entities[i].uniform_kerning], 2);
+                VkBase::update_descriptor_set_buffers(&device, *set, &[&entities[i].uniform_info], 3);
                 VkBase::update_descriptor_set_buffers(&device, *set, &[glyph_info_buffer], 4);
-
             }
         }
     }

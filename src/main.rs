@@ -41,7 +41,7 @@ enum TargetScene {
     Empty
 }
 
-const STARTING_SCENE: TargetScene = TargetScene::Empty;
+const STARTING_SCENE: TargetScene = TargetScene::Simple;
 
 const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, 10.0);
 const CAMERA_DIRECTION: Vec3 = Vec3::new(0.0, 0.0, -1.0);
@@ -97,16 +97,17 @@ impl App {
 
         let current_time = Instant::now();
         let delta_time   = 16.0e-3;
-        let speed        = 0.05;
+        let speed        = 1.0;
 
         let keyboard_state = KeyboardState::new();
 
-        let demo_scene = DemoScene::new(&base);
-        let simple_scene = SimpleScene::new(&base, &mut allocator);
 
         let camera_staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<CameraParams>() as u64).unwrap();
         let camera_uniform = allocator.alloc(BufferType::Uniform, std::mem::size_of::<CameraParams>() as u64).unwrap();
         let camera = Self::make_camera();
+
+        let demo_scene = DemoScene::new(&base);
+        let simple_scene = SimpleScene::new(&base, &mut allocator);
 
         let global_descriptor_set = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, base.global_descriptor_set_layout, base.max_in_flight);
 
@@ -169,7 +170,8 @@ impl App {
         }
 
         unsafe {
-            let data_ptr = self.base.device.logical.map_memory(self.camera_staging.memory, self.camera_staging.offset, self.camera_staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut CameraParams;
+            let data_ptr = self.base.device.logical.map_memory(self.camera_staging.memory, 0, self.camera_staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+            let data_ptr = data_ptr.offset(self.camera_staging.offset as isize) as *mut CameraParams;
             data_ptr.copy_from_nonoverlapping(&self.camera.params  as *const CameraParams, self.camera_staging.size as usize);
             self.base.device.logical.unmap_memory(self.camera_staging.memory);
 
@@ -182,7 +184,7 @@ impl App {
 
             self.base.device.logical.cmd_copy_buffer(cb, self.camera_staging.buffer, self.camera_uniform.buffer, &copy_region);
         }
-        
+
 
         match self.target_scene {
             TargetScene::Demo => {
@@ -375,7 +377,7 @@ fn main() {
     let event_loop = EventLoop::new().unwrap();
 
     let window = WindowBuilder::new()
-        .with_title("Vulkan Video")
+        .with_title("The Rust Graphics Engine")
         .build(&event_loop)
         .unwrap();
 

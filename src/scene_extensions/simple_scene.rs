@@ -5,8 +5,6 @@ use stb_truetype::{FontAtlas, CHARS_LEN};
 use winit::event::ElementState;
 use winit::keyboard::KeyCode;
 
-use crate::utils::buffer;
-use crate::mesh::RectMesh;
 use crate::ShaderRect;
 use crate::drawable::{drawable2d::Drawable2d, drawable_text::DrawableText};
 use crate::geometry::vec3::Vec3;
@@ -24,7 +22,6 @@ macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../assets/fonts/Atlas_Iosevka_Reg
 macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas_desc.bin" }; }
 
 
-const FONT_ATLAS_PATH: &str  = FONT_ATLAS_PATH_MAC!();
 const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
 const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
@@ -45,8 +42,7 @@ struct SharedFontData {
 
 pub struct SimpleScene
 {
-    pub time            : Instant,
-
+    pub time           : Instant,
     pub static_meshes  : Vec<DrawableMesh>,
     pub dynamic_meshes : Vec<DrawableMesh>,
 
@@ -131,7 +127,7 @@ impl SimpleScene
         DrawableText::init_font_atlas(&base.device, &font_data.atlas_texture, &font_data.glyph_uniform, &frame_timer);
 
         let rect_bundles = vec![
-            Drawable2d::new(&base.device, RectMesh::new(-0.25, -0.25, 0.5, 0.5, [0.0, 0.01, 0.01]))
+            // Drawable2d::new(&base.device, RectMesh::new(-0.25, -0.25, 0.5, 0.5, [0.0, 0.01, 0.01]))
         ];
 
         Self {
@@ -205,7 +201,8 @@ impl SimpleScene
         };
 
         unsafe {
-            let data_ptr = base.device.logical.map_memory(self.staging.memory, self.staging.offset, self.staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut SpecialMeshShaderParams;
+            let data_ptr = base.device.logical.map_memory(self.staging.memory, 0, self.staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+            let data_ptr = data_ptr.offset(self.staging.offset as isize) as *mut SpecialMeshShaderParams;
             data_ptr.copy_from_nonoverlapping(&params as *const SpecialMeshShaderParams, self.staging.size as usize);
             base.device.logical.unmap_memory(self.staging.memory);
 
@@ -226,7 +223,8 @@ impl SimpleScene
 
                 let size = self.font_data.staging.size;
                 let data: [(u32, u32); CHARS_LEN] = self.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
-                let data_ptr = base.device.logical.map_memory(self.font_data.staging.memory, self.font_data.staging.offset, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u32;
+                let data_ptr = base.device.logical.map_memory(self.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                let data_ptr = data_ptr.offset(self.font_data.staging.offset as isize) as *mut u32;
                 data_ptr.copy_from_nonoverlapping(data.as_ptr() as _, size as usize);
                 base.device.logical.unmap_memory(self.font_data.staging.memory);
 
