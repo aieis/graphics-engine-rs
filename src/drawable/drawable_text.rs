@@ -96,6 +96,7 @@ impl DrawableText {
         let text = self.text.iter().map(|c| { *c as u8 } ).collect::<Vec<_>>();
         self.kerning_info.resize(self.text.len(), (0, 0));
         font.pack_kerning_data(&text[..], &mut self.kerning_info);
+        println!("KERN: {:?}", self.kerning_info);
         self.dirty = true;
     }
 

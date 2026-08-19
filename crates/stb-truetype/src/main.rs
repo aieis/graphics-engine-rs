@@ -41,7 +41,7 @@ pub fn pack_atlas_with_info() {
 
     let (h, m, s) = get_time_of_day();
 
-    let msg = format!("Hello, my Quick Brown Fox!: {:02}:{:02}:{:02}", h, m, s);
+    let msg = format!("Hello, World of my Quick Brown Fox!: {:02}:{:02}:{:02}", h, m, s);
 	let im: RgbaImage = font_atlas.pack_message(&msg);
 
 	write_ff("./test_outputs/message.ff", &im);

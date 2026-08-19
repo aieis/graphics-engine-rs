@@ -34,7 +34,6 @@ pub struct TextScene
 {
 	frame_timer: DrawableText,
     font_data: SharedFontData,
-	previous_time: Instant,
     initialized: bool
 }
 
@@ -43,7 +42,7 @@ impl TextScene
     pub fn new(base: &VkBase, allocator: &mut Allocator) -> Self {
         let font_atlas = FontAtlas::parse_atlas_from_memory(FONT_ATLAS_DESC_DATA, FONT_ATLAS_DATA).expect("Failed to load atlas.");
         let font_atlas_texture = utils::image::create_texture_image(&base.device, font_atlas.atlas.w, font_atlas.atlas.h, (font_atlas.atlas.w * font_atlas.atlas.h * 4) as u64, PixelFormat::RGBA);
-        let frame_timer = DrawableText::new(base, Vec3::new(-0.8, -0.8, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64);
+        let mut frame_timer = DrawableText::new(base, Vec3::new(-0.8, -0.8, 0.0), font_atlas.desc.info.clone(), allocator, " Hello, World", 64);
 
         let font_data = SharedFontData {
             atlas: font_atlas,
@@ -53,10 +52,10 @@ impl TextScene
         };
 
         DrawableText::init_font_atlas(&base.device, &font_data.atlas_texture, &font_data.glyph_uniform, &std::slice::from_ref(&frame_timer));
+		frame_timer.kern_text(&font_data.atlas);
 
         Self {
             frame_timer,
-            previous_time: Instant::now(),
             font_data,
             initialized: false,
         }
@@ -84,8 +83,8 @@ impl TextScene
                 let size = self.font_data.staging.size;
                 let data: [(u32, u32); CHARS_LEN] = self.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
                 let data_ptr = base.device.logical.map_memory(self.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                let data_ptr = data_ptr.offset(self.font_data.staging.offset as isize) as *mut u32;
-                data_ptr.copy_from_nonoverlapping(data.as_ptr() as _, size as usize);
+                let data_ptr = data_ptr.offset(self.font_data.staging.offset as isize) as *mut (u32, u32);
+                data_ptr.copy_from_nonoverlapping(data.as_ptr(), size as usize);
                 base.device.logical.unmap_memory(self.font_data.staging.memory);
 
                 let size = self.font_data.atlas_texture.staging.size;
@@ -112,11 +111,12 @@ impl TextScene
         }
 
 
-		let frame_time_ms = self.previous_time.elapsed().as_millis();
-		let frame_time = format!("{:>12} ", frame_time_ms);
-		self.frame_timer.set_text(&frame_time);
-		self.frame_timer.kern_text(&self.font_data.atlas);
-		self.previous_time = Instant::now();
+
+		// let frame_time_ms = self.previous_time.elapsed().as_millis();
+		// let frame_time = format!("{:>12} ", frame_time_ms);
+		// self.frame_timer.set_text(&frame_time);
+		// self.frame_timer.kern_text(&self.font_data.atlas);
+		// self.previous_time = Instant::now();
 
 		DrawableText::update(&base.device, cb, std::slice::from_mut(&mut self.frame_timer));
     }

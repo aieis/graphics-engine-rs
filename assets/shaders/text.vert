@@ -19,7 +19,7 @@ layout(set = 0, binding = 3) uniform TextData {
 } T;
 
 
-layout(set = 0, binding = 4) uniform GlyphInfo { uvec4 Data[96 / 2]; } Glyphs;
+layout(set = 0, binding = 4) uniform GlyphInfo { uvec4 Data[48]; } Glyphs;
 
 const vec2 OFFSETS[6] = {
     vec2(-1, -1),
@@ -41,7 +41,7 @@ void main() {
 
     uint char_index = (gl_VertexIndex  / 6);
     uint c = Chars.Data[char_index / 4][char_index % 4] - 32;
-	c = CHAR_TEST[char_index % CHARS_LEN] - 32;
+	// c = CHAR_TEST[char_index % CHARS_LEN] - 32;
 
     uvec4 glyph_group = Glyphs.Data[c / 2];
     vec2 glyph_dims;
@@ -60,7 +60,7 @@ void main() {
     }
 
     vec2 dims = vec2(T.CharDims.x, T.CharDims.y);
-    glyph_dims = dims;
+    // glyph_dims = dims;
 
 	uint chars_per_row = uint(T.CharPacking.x);
 	uint chars_per_col = uint(T.CharPacking.y);
@@ -74,7 +74,7 @@ void main() {
     float v_x_offset = (OFFSETS[gl_VertexIndex % 6].x + 1.0) / 2.0 * glyph_dims.x;
     float coord_cx_v = (cx + v_x_offset) / (chars_per_row * dims.x);
 
-    float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * glyph_dims.y;
+    float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * glyph_dims.y + dims.y - glyph_dims.y;
     float coord_cy_v = (cy + v_y_offset) / (chars_per_col * dims.y);
 
     vec2 coord = vec2(coord_cx_v, coord_cy_v);
@@ -82,13 +82,18 @@ void main() {
 	float cw = 0.03;
 	float cw_scale = cw / dims.x;
 
+    /*
+     *   dx
+     * + -- +
+     * |    | dy
+     * + -- +
+     */
+
+
     float p_x_offset = OFFSETS[gl_VertexIndex % 6].x * glyph_dims.x;
     float p_y_offset = OFFSETS[gl_VertexIndex % 6].y * glyph_dims.y;
 
-	glyph_position = vec2(char_index * dims.x, 0) * 5;
-	glyph_position.y = 0;
-
-    vec2 pos =  T.Position.xy + vec2(glyph_position.x, glyph_position.y) * cw_scale + vec2(p_x_offset, p_y_offset) * cw_scale;
+    vec2 pos =  T.Position.xy + glyph_position * cw_scale + vec2(p_x_offset, p_y_offset) * cw_scale;
 
     gl_Position = vec4(pos, 0.0, 1.0);
     TexCoord = coord;

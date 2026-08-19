@@ -167,8 +167,9 @@ impl FontAtlas {
 			    for x in 0..glyph_info.w {
                     let src = (atlas_py + y) * atlas_stride + (atlas_px + x) *4;
                     let dst = (py + y) * stride + (px + x) * 4;
-                    im[dst+2] = 255;
-                    im[dst+3] = self.atlas.data[src+3];
+                    im[dst+0] = self.atlas.data[src+3];
+                    im[dst+1] = self.atlas.data[src+3];
+                    im[dst+3] = 255;
 			    }
 		    }
 		}
