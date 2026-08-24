@@ -18,7 +18,7 @@ void main()
 
 	// There is no transparency yet
 
-	vec3 bg_col = vec3(0.3, 0.3, 0.3);
+	vec3 bg_col = vec3(0, 0, 0); //vec3(0.3, 0.3, 0.3);
 
 	vec3 col = color.a * TextColor + (1.0 - color.a) * bg_col;
 

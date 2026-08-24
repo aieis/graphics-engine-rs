@@ -176,7 +176,7 @@ impl App {
         unsafe {
             let data_ptr = self.base.device.logical.map_memory(self.camera_staging.memory, 0, self.camera_staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
             let data_ptr = data_ptr.offset(self.camera_staging.offset as isize) as *mut CameraParams;
-            data_ptr.copy_from_nonoverlapping(&self.camera.params  as *const CameraParams, self.camera_staging.size as usize);
+            data_ptr.copy_from_nonoverlapping(&self.camera.params  as *const CameraParams, 1);
             self.base.device.logical.unmap_memory(self.camera_staging.memory);
 
             let copy_region = [

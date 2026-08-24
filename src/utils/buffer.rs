@@ -43,3 +43,9 @@ pub fn bind_buffer_memory(device: &DeviceBundle, buffer: vk::Buffer, size: u64, 
 
     Ok ( memory )
 }
+
+
+pub fn create_staging_buffer(device: &DeviceBundle, size: u64) -> BufferBundle {
+    let required_memory_properties = vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT;
+    create_buffer_with_memory(device, size, vk::BufferUsageFlags::TRANSFER_SRC, required_memory_properties).unwrap()
+}

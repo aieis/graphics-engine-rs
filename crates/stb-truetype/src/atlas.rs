@@ -148,18 +148,18 @@ impl FontAtlas {
 		let stride = width as usize * 4;
 
 		for i in 0..message.len(){
-            let (px, py) = kerning_data[i];
             let c_i = message[i] as usize  - 32;
 
 		    let glyph_info = &self.desc.glyph_info[c_i];
 
+            let (px, py) = kerning_data[i];
             let px = px as usize;
             let py = py as usize;
 
             let glyph_col = c_i % self.desc.info.chars_per_row as usize;
             let glyph_row = c_i / self.desc.info.chars_per_row as usize;
 
-            let atlas_px =   glyph_col   * self.desc.info.char_width as usize;
+            let atlas_px =  glyph_col    * self.desc.info.char_width as usize;
             let atlas_py = (glyph_row+1) * self.desc.info.char_height as usize - glyph_info.h;
             let atlas_stride = (self.desc.info.chars_per_row * self.desc.info.char_width * 4) as usize;
 

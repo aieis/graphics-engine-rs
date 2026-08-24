@@ -22,6 +22,8 @@ macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../assets/fonts/Atlas_Iosevk
 const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
 const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
+const USE_ALLOCATOR: bool = true;
+
 struct SharedFontData {
     atlas: FontAtlas,
     atlas_texture: TextureBundle,
@@ -44,11 +46,19 @@ impl TextScene
         let font_atlas_texture = utils::image::create_texture_image(&base.device, font_atlas.atlas.w, font_atlas.atlas.h, (font_atlas.atlas.w * font_atlas.atlas.h * 4) as u64, PixelFormat::RGBA);
         let mut frame_timer = DrawableText::new(base, Vec3::new(-0.8, -0.8, 0.0), font_atlas.desc.info.clone(), allocator, " Hello, World", 64);
 
+
+        const GLYPH_UNIFORM_SIZE: u64 = CHARS_LEN as u64 * std::mem::size_of::<u32>() as u64 * 2;
+
+        let staging = match USE_ALLOCATOR {
+            true  => allocator.alloc(BufferType::Staging, GLYPH_UNIFORM_SIZE).unwrap(),
+            false => utils::buffer::create_staging_buffer(&base.device, GLYPH_UNIFORM_SIZE)
+        };
+
         let font_data = SharedFontData {
             atlas: font_atlas,
             atlas_texture: font_atlas_texture,
-            staging: allocator.alloc(BufferType::Staging, CHARS_LEN as u64 * std::mem::size_of::<u32>() as u64 * 2).unwrap(),
-            glyph_uniform: allocator.alloc(BufferType::Uniform, CHARS_LEN as u64 * std::mem::size_of::<u32>() as u64 * 2).unwrap(),
+            staging: staging,
+            glyph_uniform: allocator.alloc(BufferType::Uniform, GLYPH_UNIFORM_SIZE).unwrap(),
         };
 
         DrawableText::init_font_atlas(&base.device, &font_data.atlas_texture, &font_data.glyph_uniform, &std::slice::from_ref(&frame_timer));
@@ -81,15 +91,22 @@ impl TextScene
             unsafe {
 
                 let size = self.font_data.staging.size;
-                let data: [(u32, u32); CHARS_LEN] = self.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
+                let mut data =  [0; CHARS_LEN * 2];
+                let mut i = 0;
+                while i < CHARS_LEN {
+                    data[i*2 + 0] = self.font_data.atlas.desc.glyph_info[i].w as u32;
+                    data[i*2 + 1] = self.font_data.atlas.desc.glyph_info[i].h as u32;
+                    i+=1;
+                }
+
                 let data_ptr = base.device.logical.map_memory(self.font_data.staging.memory, 0, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                let data_ptr = data_ptr.offset(self.font_data.staging.offset as isize) as *mut (u32, u32);
-                data_ptr.copy_from_nonoverlapping(data.as_ptr(), size as usize);
+                let data_ptr = data_ptr.offset(self.font_data.staging.offset as isize) as *mut u32;
+                data_ptr.copy_from_nonoverlapping(data.as_ptr(), data.len());
                 base.device.logical.unmap_memory(self.font_data.staging.memory);
 
                 let size = self.font_data.atlas_texture.staging.size;
                 let data_ptr = base.device.logical.map_memory(self.font_data.atlas_texture.staging.memory, self.font_data.atlas_texture.staging.offset, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                data_ptr.copy_from_nonoverlapping(self.font_data.atlas.atlas.data.as_ptr(), size as usize);
+                data_ptr.copy_from_nonoverlapping(self.font_data.atlas.atlas.data.as_ptr(), self.font_data.atlas.atlas.data.len());
                 base.device.logical.unmap_memory(self.font_data.atlas_texture.staging.memory);
 
 				utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
@@ -110,8 +127,6 @@ impl TextScene
             self.initialized = true;
         }
 
-
-
 		// let frame_time_ms = self.previous_time.elapsed().as_millis();
 		// let frame_time = format!("{:>12} ", frame_time_ms);
 		// self.frame_timer.set_text(&frame_time);
@@ -122,13 +137,18 @@ impl TextScene
     }
 
     pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize) {
-		DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, std::slice::from_ref(&self.frame_timer));
+        DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, std::slice::from_ref(&self.frame_timer));
     }
 
     pub fn release(&mut self, base: &VkBase) {
         DrawableText::release(&base.device, std::slice::from_mut(&mut self.frame_timer));
 
         unsafe {
+            if USE_ALLOCATOR {
+		        base.device.logical.destroy_buffer(self.font_data.staging.buffer, None);
+                base.device.logical.free_memory(self.font_data.staging.memory, None);
+            }
+
 			base.device.logical.destroy_buffer(self.font_data.atlas_texture.staging.buffer, None);
             base.device.logical.free_memory(self.font_data.atlas_texture.staging.memory, None);
             base.device.logical.destroy_image(self.font_data.atlas_texture.resource.image, None);

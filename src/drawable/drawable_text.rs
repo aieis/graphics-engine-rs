@@ -112,8 +112,6 @@ impl DrawableText {
 
             let size = std::mem::size_of::<TextData>() + entity.capacity * 4;
 
-            let size_gen = std::mem::size_of::<TextData>();
-
             let text_data = TextData {
                 char_dims: Vec3::new(entity.atlas_info.char_width as f32, entity.atlas_info.char_height as f32, 0.0),
                 position: entity.position,
@@ -123,22 +121,22 @@ impl DrawableText {
 
             unsafe {
 
-				let data_ptr = device.logical.map_memory(entity.staging_info.memory, 0, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+				let data_ptr = device.logical.map_memory(entity.staging_info.memory, 0, entity.staging_info.offset + size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
                 let data_ptr = data_ptr.offset(entity.staging_info.offset as isize) as * mut TextData;
-                data_ptr.copy_from_nonoverlapping(&text_data as _, size_gen);
+                data_ptr.copy_from_nonoverlapping(&text_data as _, 1);
                 device.logical.unmap_memory(entity.staging_info.memory);
 
 
-				let data_ptr = device.logical.map_memory(entity.staging_content.memory, 0, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                let data_ptr = data_ptr.offset(entity.staging_content.offset as isize) as * mut u32;
 				let size = std::mem::size_of_val(&entity.text[..]);
-                data_ptr.copy_from_nonoverlapping(entity.text.as_ptr(), size);
+				let data_ptr = device.logical.map_memory(entity.staging_content.memory, 0, entity.staging_content.offset + size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                let data_ptr = data_ptr.offset(entity.staging_content.offset as isize) as * mut u32;
+                data_ptr.copy_from_nonoverlapping(entity.text.as_ptr(), entity.text.len());
                 device.logical.unmap_memory(entity.staging_content.memory);
 
-				let data_ptr = device.logical.map_memory(entity.staging_kerning.memory, 0, size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                let data_ptr = data_ptr.offset(entity.staging_kerning.offset as isize) as * mut (i32, i32);
 				let size = std::mem::size_of_val(&entity.kerning_info[..]);
-                data_ptr.copy_from_nonoverlapping(entity.kerning_info.as_ptr(), size);
+				let data_ptr = device.logical.map_memory(entity.staging_kerning.memory, 0, entity.staging_kerning.offset + size as u64, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+                let data_ptr = data_ptr.offset(entity.staging_kerning.offset as isize) as * mut (i32, i32);
+                data_ptr.copy_from_nonoverlapping(entity.kerning_info.as_ptr(), entity.kerning_info.len());
                 device.logical.unmap_memory(entity.staging_kerning.memory);
 
                 let copy_region = [
@@ -204,6 +202,7 @@ impl DrawableText {
                     &set, &[]);
 
                 device.logical.cmd_draw(cb, entities[i].text.len() as u32 * 6, 1, 0, 0);
+                // device.logical.cmd_draw(cb, 96 * 6, 1, 0, 0);
             }
         }
     }
