@@ -318,6 +318,20 @@ impl App {
     fn handle_key(&mut self, event: KeyEvent) {
         match event.physical_key {
             PhysicalKey::Code(a) => {
+                match self.target_scene {
+                    TargetScene::Simple => {
+                        self.simple_scene.handle_key(a, event.state, event.repeat);
+                    },
+
+                    TargetScene::Text => {
+                        self.text_scene.handle_key(a, event.state, event.repeat);
+                    }
+
+                    _ => {
+                        // noting to do
+                    },
+                };
+
                 match a {
                     KeyCode::Escape => {
                         self.close = true;
@@ -349,23 +363,7 @@ impl App {
                     }
 
 
-                    k => {
-
-                        match self.target_scene {
-                            TargetScene::Simple => {
-                                self.simple_scene.handle_key(k, event.state, event.repeat);
-                            },
-
-                            TargetScene::Text => {
-                                self.text_scene.handle_key(k, event.state, event.repeat);
-                            }
-
-                            _ => {
-                                // noting to do
-                            },
-                        }
-
-                    }
+                    _ => { }
                 }
             }
             _ => {}
