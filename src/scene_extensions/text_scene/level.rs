@@ -113,12 +113,20 @@ impl TextScene
 
             }
         }
+    }
 
-        if let Some(c) = get_char_from_keypress(key) {
-            self.lines_data[0].push(c);
-            self.lines[0].set_text_from_char_vec(&self.lines_data[0]);
-            self.lines[0].kern_text(&self.font_data.atlas);
+    pub fn handle_text_input(&mut self, text: &str) {
+
+        for c in text.as_bytes().iter() {
+            let c = *c;
+            if c >= 32 && c < 128 {
+                self.lines_data[0].push(c as char);
+            }
         }
+
+        self.lines[0].set_text_from_char_vec(&self.lines_data[0]);
+        self.lines[0].kern_text(&self.font_data.atlas);
+
     }
 
     pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, _aspect_ratio: f32) {

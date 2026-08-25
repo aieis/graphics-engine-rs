@@ -362,11 +362,29 @@ impl App {
                         self.target_scene = TargetScene::Text;
                     }
 
-
                     _ => { }
                 }
             }
-            _ => {}
+
+
+            _ => { }
+
+        }
+        if event.state == ElementState::Pressed {
+            if let Some(text) = event.text {
+                match self.target_scene {
+                    TargetScene::Simple => {
+                        //
+                    },
+
+                    TargetScene::Text => {
+                        self.text_scene.handle_text_input(&text);
+                    }
+                    _ => {
+                        // noting to do
+                    },
+                }
+            }
         }
     }
 
