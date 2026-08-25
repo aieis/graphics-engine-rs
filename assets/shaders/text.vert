@@ -77,28 +77,23 @@ void main() {
     uint c_pos_x = c % chars_per_row;
     uint c_pos_y = c / chars_per_row;
 
-    float cx = c_pos_x*dims.x;
-    float cy = c_pos_y*dims.y;
+    float cx = float(c_pos_x)  *dims.x;
+    float cy = float(c_pos_y+1)*dims.y - glyph_dims.y;
 
     float v_x_offset = (OFFSETS[gl_VertexIndex % 6].x + 1.0) / 2.0 * glyph_dims.x;
     float coord_cx_v = (cx + v_x_offset) / (chars_per_row * dims.x);
 
-    float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * glyph_dims.y + dims.y - glyph_dims.y;
+    float v_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * glyph_dims.y;
     float coord_cy_v = (cy + v_y_offset) / (chars_per_col * dims.y);
 
     vec2 coord = vec2(coord_cx_v, coord_cy_v);
 
-
     // SET DEBUG POSITION
 
-
-	float cw = 0.03;
+	float cw = 0.05;
 	float cw_scale = cw / dims.x;
 
-    // glyph_position = vec2(float(char_index) / chars_per_row, 0);
-    // glyph_position.x /= (dims.x * chars_per_row);
-    // glyph_position.y /= (dims.y * chars_per_col);
-
+    // glyph_position = vec2(cx / (chars_per_row * dims.x) * 2 - 1, cy / (chars_per_col * dims.y) * 2 - 1);
 
     /*
      *   dx
@@ -107,11 +102,10 @@ void main() {
      * + -- +
      */
 
+    float p_x_offset = (OFFSETS[gl_VertexIndex % 6].x + 1.0) / 2.0 * glyph_dims.x;
+    float p_y_offset = (OFFSETS[gl_VertexIndex % 6].y + 1.0) / 2.0 * glyph_dims.y;
 
-    float p_x_offset = OFFSETS[gl_VertexIndex % 6].x * glyph_dims.x / 2;
-    float p_y_offset = OFFSETS[gl_VertexIndex % 6].y * glyph_dims.y;
-
-    vec2 pos =  T.Position.xy + glyph_position * cw_scale + vec2(p_x_offset, p_y_offset) * cw_scale;
+    vec2 pos =  T.Position.xy + glyph_position * cw_scale + (vec2(p_x_offset, p_y_offset)) * cw_scale;
     // vec2 pos =  glyph_position + vec2(p_x_offset, p_y_offset) * cw_scale;
 
     gl_Position = vec4(pos, 0.0, 1.0);

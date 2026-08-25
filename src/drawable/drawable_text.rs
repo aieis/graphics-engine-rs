@@ -41,8 +41,6 @@ impl DrawableText {
 
     pub fn new(base: &VkBase, position: Vec3, atlas_info: FontAtlasInfo, allocator: &mut Allocator, text: &str, capacity: usize) -> Self {
 
-        let size = std::mem::size_of::<TextData>() + capacity * 4 + capacity * 2 * 4;
-
         let staging_info    = allocator.alloc(BufferType::Staging, std::mem::size_of::<TextData>() as u64).unwrap();
         let staging_content = allocator.alloc(BufferType::Staging, capacity as u64 * 4).unwrap();
         let staging_kerning = allocator.alloc(BufferType::Staging, capacity as u64 * 8).unwrap();
@@ -91,12 +89,17 @@ impl DrawableText {
         self.dirty = true;
     }
 
+    pub fn set_text_from_char_vec(&mut self, text: &[char]) {
+        let count = if text.len() > self.capacity { self.capacity } else { text.len() };
+        self.text = text[0..count].iter().map(|c| { *c as u32 } ).collect::<Vec<_>>();
+        self.dirty = true;
+    }
+
     pub fn kern_text(&mut self, font: &FontAtlas) {
         // TODO: this map can be removed by using text as Vec<u8> to begin with
         let text = self.text.iter().map(|c| { *c as u8 } ).collect::<Vec<_>>();
         self.kerning_info.resize(self.text.len(), (0, 0));
         font.pack_kerning_data(&text[..], &mut self.kerning_info);
-        println!("KERN: {:?}", self.kerning_info);
         self.dirty = true;
     }
 
