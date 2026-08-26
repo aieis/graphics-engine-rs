@@ -2,19 +2,22 @@
 use stb_truetype::{FontAtlasInfo, FontAtlas};
 
 use crate::geometry::vec3::Vec3;
+use crate::geometry::vec4::Vec4;
+
 use crate::rhi::allocator::{Allocator, BufferType};
 use crate::shader::ShaderText;
 use crate::vk_base::VkBase;
 use crate::vk_bundles::BufferBundle;
 use crate::{DeviceBundle, GraphicsPipelineBundle, TextureBundle};
 
+const CHAR_SIZE: f32 = 25.0;
 
 #[repr(C)]
 struct TextData {
-    char_dims: Vec3,
+    char_dims: Vec4,
     position: Vec3,
     colour: Vec3,
-	char_packing: Vec3,
+    other: Vec3
 }
 
 
@@ -103,7 +106,7 @@ impl DrawableText {
         self.dirty = true;
     }
 
-    pub fn update(device: &DeviceBundle, cb: vk::CommandBuffer, entities: &mut [Self]) -> bool {
+    pub fn update(device: &DeviceBundle, cb: vk::CommandBuffer, entities: &mut [Self], width: f32, aspect: f32) -> bool {
         let mut recorded = false;
 
         for entity in entities.iter_mut() {
@@ -116,10 +119,10 @@ impl DrawableText {
             let size = std::mem::size_of::<TextData>() + entity.capacity * 4;
 
             let text_data = TextData {
-                char_dims: Vec3::new(entity.atlas_info.char_width as f32, entity.atlas_info.char_height as f32, 0.0),
+                char_dims: Vec4::new(entity.atlas_info.char_width as f32, entity.atlas_info.char_height as f32, entity.atlas_info.chars_per_row as f32, entity.atlas_info.chars_per_col as f32),
                 position: entity.position,
                 colour: Vec3::new(1.0, 1.0, 1.0),
-				char_packing: Vec3::new(entity.atlas_info.chars_per_row as f32, entity.atlas_info.chars_per_col as f32, 0.0)
+                other: Vec3::new(CHAR_SIZE / width , aspect, 0.0),
             };
 
             unsafe {

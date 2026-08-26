@@ -258,7 +258,7 @@ impl SimpleScene
 		self.frame_timer[0].kern_text(&self.font_data.atlas);
 		self.previous_time = Instant::now();
 
-		DrawableText::update(&base.device, cb, &mut self.frame_timer);
+		DrawableText::update(&base.device, cb, &mut self.frame_timer, 1024.0, aspect_ratio);
     }
 
     pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize, global_descriptor_set: vk::DescriptorSet) {

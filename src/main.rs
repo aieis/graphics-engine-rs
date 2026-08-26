@@ -202,7 +202,7 @@ impl App {
 
             TargetScene::Text => {
                 let w = self.base.window.inner_size();
-                self.text_scene.update(&self.base, cb, w.width as f32 / w.height as f32);
+                self.text_scene.update(&self.base, cb, w.width as f32 / w.height as f32, w.width as f32);
             }
 
             TargetScene::Empty => {

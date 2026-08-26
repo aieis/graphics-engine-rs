@@ -1,9 +1,9 @@
-use std::time::Instant;
-
 use ash::vk;
 use stb_truetype::{FontAtlas, CHARS_LEN};
 use winit::event::ElementState;
 use winit::keyboard::KeyCode;
+
+use super::editor::Editor;
 
 use crate::drawable::drawable_text::DrawableText;
 use crate::geometry::vec3::Vec3;
@@ -15,7 +15,6 @@ use crate::vk_bundles::{BufferBundle, TextureBundle};
 use crate::vk_base::VkBase;
 use crate::shader::ShaderText;
 
-
 macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas.ff" }; }
 macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas_desc.bin" }; }
 
@@ -24,7 +23,7 @@ const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
 const USE_ALLOCATOR: bool = true;
 
-const STARTING_TEXT: &str = "Hello, good World!";
+const STARTING_TEXT: &str = "Start Typing";
 
 struct SharedFontData {
     atlas: FontAtlas,
@@ -37,13 +36,10 @@ struct SharedFontData {
 pub struct TextScene
 {
 	lines: Vec<DrawableText>,
+
     font_data: SharedFontData,
-
-
     initialized: bool,
-
-    lines_data: Vec<Vec<char>>,
-    cursor: (usize, usize),
+    editor: Editor,
 }
 
 impl TextScene
@@ -51,8 +47,13 @@ impl TextScene
     pub fn new(base: &VkBase, allocator: &mut Allocator) -> Self {
         let font_atlas = FontAtlas::parse_atlas_from_memory(FONT_ATLAS_DESC_DATA, FONT_ATLAS_DATA).expect("Failed to load atlas.");
         let font_atlas_texture = utils::image::create_texture_image(&base.device, font_atlas.atlas.w, font_atlas.atlas.h, (font_atlas.atlas.w * font_atlas.atlas.h * 4) as u64, PixelFormat::RGBA);
-        let mut lines = vec![DrawableText::new(base, Vec3::new(-0.8, -0.8, 0.0), font_atlas.desc.info.clone(), allocator, STARTING_TEXT, 64)];
-
+        let mut lines = vec![
+            DrawableText::new(base, Vec3::new(-0.8, -0.8, 0.0), font_atlas.desc.info.clone(), allocator, STARTING_TEXT, 64)
+            // DrawableText::new(base, Vec3::new(-0.8, -0.6, 0.0), font_atlas.desc.info.clone(), allocator, "", 64)
+            // DrawableText::new(base, Vec3::new(-0.8, -0.4, 0.0), font_atlas.desc.info.clone(), allocator, "", 64)
+            // DrawableText::new(base, Vec3::new(-0.8, -0.2, 0.0), font_atlas.desc.info.clone(), allocator, "", 64)
+            // DrawableText::new(base, Vec3::new(-0.8,  0.0, 0.0), font_atlas.desc.info.clone(), allocator, "", 64)
+        ];
 
         const GLYPH_UNIFORM_SIZE: u64 = CHARS_LEN as u64 * std::mem::size_of::<u32>() as u64 * 2;
 
@@ -75,8 +76,7 @@ impl TextScene
             lines,
             font_data,
             initialized: false,
-            lines_data: vec![from_str(STARTING_TEXT)],
-            cursor: (0, 0),
+            editor: Editor::new(),
         }
     }
 
@@ -88,25 +88,15 @@ impl TextScene
 
         match key {
             KeyCode::Backspace => {
-                self.lines_data[0].pop();
-                self.lines[0].set_text_from_char_vec(&self.lines_data[0]);
-                self.lines[0].kern_text(&self.font_data.atlas);
+                self.editor.delete_backwards();
             }
 
             KeyCode::ArrowLeft  => {
-                let (ln, c) = self.cursor;
-                if self.cursor.1 > 0 {
-                    self.cursor = (ln, c - 1);
-                } else if self.cursor.0 > 0 {
-                    self.cursor = (ln - 1, self.lines_data[ln-1].len())
-                }
+                self.editor.advance_cursor_backward();
             }
 
             KeyCode::ArrowRight => {
-                let (ln, c) = self.cursor;
-                if self.cursor.1 < self.lines_data[ln].len() {
-                    self.cursor = (ln, c + 1);
-                }
+                self.editor.advance_cursor_forward();
             },
 
             _ => {
@@ -117,24 +107,25 @@ impl TextScene
 
     pub fn handle_text_input(&mut self, text: &str) {
 
-        for c in text.as_bytes().iter() {
-            let c = *c;
-            if c >= 32 && c < 128 {
-                self.lines_data[0].push(c as char);
-            }
-        }
-
-        self.lines[0].set_text_from_char_vec(&self.lines_data[0]);
-        self.lines[0].kern_text(&self.font_data.atlas);
+        self.editor.insert_text(text);
+        self.update_text_inputs();
 
     }
 
-    pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, _aspect_ratio: f32) {
+    pub fn update_text_inputs(&mut self) {
+        //TODO: Move elsewhere this is nonsense
+        let lim = if self.lines.len() < self.editor.lines.len() {self.lines.len() } else { self.editor.lines.len() };
+        for i in 0..lim {
+            self.lines[i].set_text_from_char_vec(&self.editor.lines[i]);
+            self.lines[i].kern_text(&self.font_data.atlas);
+        }
+    }
+
+    pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, aspect_ratio: f32, width: f32) {
 
         if !self.initialized {
 
             unsafe {
-
                 let size = self.font_data.staging.size;
                 let mut data =  [0; CHARS_LEN * 2];
                 let mut i = 0;
@@ -172,7 +163,7 @@ impl TextScene
             self.initialized = true;
         }
 
-		DrawableText::update(&base.device, cb, &mut self.lines);
+		DrawableText::update(&base.device, cb, &mut self.lines, width, aspect_ratio);
     }
 
     pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize) {
@@ -197,94 +188,4 @@ impl TextScene
         }
     }
 
-}
-
-
-fn get_char_from_keypress(k: KeyCode) -> Option<char> {
-    let c = match k {
-        KeyCode::Backquote => '`',
-        KeyCode::Backslash => '\\',
-        KeyCode::BracketLeft => '[',
-        KeyCode::BracketRight => ']',
-        KeyCode::Comma => ',',
-        KeyCode::Digit0 => '0',
-        KeyCode::Digit1 => '1',
-        KeyCode::Digit2 => '2',
-        KeyCode::Digit3 => '3',
-        KeyCode::Digit4 => '4',
-        KeyCode::Digit5 => '5',
-        KeyCode::Digit6 => '6',
-        KeyCode::Digit7 => '7',
-        KeyCode::Digit8 => '8',
-        KeyCode::Digit9 => '9',
-        KeyCode::Equal => '=',
-        // KeyCode::IntlBackslash => 16,
-        // KeyCode::IntlRo => 17,
-        // KeyCode::IntlYen => 18,
-        KeyCode::KeyA => 'a',
-        KeyCode::KeyB => 'b',
-        KeyCode::KeyC => 'c',
-        KeyCode::KeyD => 'd',
-        KeyCode::KeyE => 'e',
-        KeyCode::KeyF => 'f',
-        KeyCode::KeyG => 'g',
-        KeyCode::KeyH => 'h',
-        KeyCode::KeyI => 'i',
-        KeyCode::KeyJ => 'j',
-        KeyCode::KeyK => 'k',
-        KeyCode::KeyL => 'l',
-        KeyCode::KeyM => 'm',
-        KeyCode::KeyN => 'n',
-        KeyCode::KeyO => 'o',
-        KeyCode::KeyP => 'p',
-        KeyCode::KeyQ => 'q',
-        KeyCode::KeyR => 'r',
-        KeyCode::KeyS => 's',
-        KeyCode::KeyT => 't',
-        KeyCode::KeyU => 'u',
-        KeyCode::KeyV => 'v',
-        KeyCode::KeyW => 'w',
-        KeyCode::KeyX => 'x',
-        KeyCode::KeyY => 'y',
-        KeyCode::KeyZ => 'z',
-        KeyCode::Minus => '-',
-        KeyCode::Period => '.',
-        KeyCode::Quote => '"',
-        KeyCode::Semicolon => ';',
-        KeyCode::Slash => '/',
-        KeyCode::Enter => '\n',
-        KeyCode::Space => ' ',
-        KeyCode::Tab => ' ',
-        KeyCode::Numpad0 => '0',
-        KeyCode::Numpad1 => '1',
-        KeyCode::Numpad2 => '2',
-        KeyCode::Numpad3 => '3',
-        KeyCode::Numpad4 => '4',
-        KeyCode::Numpad5 => '5',
-        KeyCode::Numpad6 => '6',
-        KeyCode::Numpad7 => '7',
-        KeyCode::Numpad8 => '8',
-        KeyCode::Numpad9 => '9',
-        KeyCode::NumpadComma => ',',
-        KeyCode::NumpadDecimal => '.',
-        KeyCode::NumpadDivide => '/',
-        KeyCode::NumpadEnter => '\n',
-        KeyCode::NumpadEqual => '=',
-        KeyCode::NumpadHash => '#',
-        KeyCode::NumpadMemoryAdd => '+',
-        KeyCode::NumpadMemorySubtract => '-',
-        KeyCode::NumpadMultiply => '*',
-        KeyCode::NumpadParenLeft => ')',
-        KeyCode::NumpadParenRight => '(',
-        KeyCode::NumpadStar => '*',
-        KeyCode::NumpadSubtract => '-',
-        _ => { return None },
-    };
-
-    Some(c)
-}
-
-
-fn from_str(s: &str) -> Vec<char> {
-    s.as_bytes().iter().map(|c| { *c as char } ).collect::<Vec<_>>()
 }

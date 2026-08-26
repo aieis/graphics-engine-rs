@@ -12,10 +12,10 @@ layout(set = 0, binding = 1) uniform CharsDataArray { uvec4 Data[16]; } Chars;
 layout(set = 0, binding = 2) uniform PositionalInfo { ivec4 Data[32]; } CharPositions;
 
 layout(set = 0, binding = 3) uniform TextData {
-    vec3 CharDims;
+    vec4 CharDims;
     vec3 Position;
     vec3 Colour;
-	vec3 CharPacking;
+    vec3 Other;
 } T;
 
 
@@ -71,8 +71,8 @@ void main() {
 
     vec2 dims = vec2(T.CharDims.x, T.CharDims.y);
 
-	uint chars_per_row = uint(T.CharPacking.x);
-	uint chars_per_col = uint(T.CharPacking.y);
+	uint chars_per_row = uint(T.CharDims.z);
+	uint chars_per_col = uint(T.CharDims.w);
 
     uint c_pos_x = c % chars_per_row;
     uint c_pos_y = c / chars_per_row;
@@ -90,8 +90,8 @@ void main() {
 
     // SET DEBUG POSITION
 
-	float cw = 0.05;
-	float cw_scale = cw / dims.x;
+	float cw = T.Other.x;
+	vec2  cw_scale = vec2(cw / dims.x, cw / dims.x * 1.0);
 
     // glyph_position = vec2(cx / (chars_per_row * dims.x) * 2 - 1, cy / (chars_per_col * dims.y) * 2 - 1);
 
