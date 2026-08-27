@@ -15,10 +15,8 @@ mod components;
 
 use std::time::{Duration, Instant};
 
-use crate::geometry::vec3::Vec3;
-use scene::camera::{Camera, CameraParams, CameraAction};
-use scene_extensions::{demo_scene::DemoScene, simple_scene::SimpleScene, text_scene::TextScene};
-use utils::{keyboard::KeyboardState};
+use scene_extensions::{demo_scene::DemoScene, simple_scene::SimpleScene, text_scene::TextScene, global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING};
+use utils::keyboard::KeyboardState;
 use vk_bundles::*;
 use rhi::allocator::{Allocator, AllocatorSizeInfo, BufferType};
 use shader::*;
@@ -44,9 +42,6 @@ enum TargetScene {
 
 const STARTING_SCENE: TargetScene = TargetScene::Text;
 
-const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, 10.0);
-const CAMERA_DIRECTION: Vec3 = Vec3::new(0.0, 0.0, -1.0);
-
 struct App {
     base: VkBase,
 
@@ -55,16 +50,10 @@ struct App {
     simple_scene: SimpleScene,
     text_scene: TextScene,
 
-    camera_staging: BufferBundle,
-    camera_uniform: BufferBundle,
-    camera: Camera,
-
-    global_descriptor_set: Vec<vk::DescriptorSet>,
     close: bool,
 
     current_time: Instant,
     delta_time: f32,
-    speed:      f32,
 
     keyboard_state: KeyboardState,
 
@@ -80,15 +69,7 @@ impl App {
 
         ShaderRegistry::describe_registed_shaders();
 
-        let global_descriptor_set_binding = DescSetBinding {
-            binding: 0,
-            descriptor_type: vk::DescriptorType::UNIFORM_BUFFER,
-            descriptor_count: 1,
-            stage_flags: vk::ShaderStageFlags::VERTEX,
-        };
-
-
-        let base = VkBase::new(window, 3, "./assets/shaders", global_descriptor_set_binding);
+        let base = VkBase::new(window, 3, "./assets/shaders", GLOBAL_DESCRIPTOR_SET_BINDING.clone());
 
         let mut allocator = Allocator::new(&base, AllocatorSizeInfo {
             staging: 10*1024,
@@ -99,25 +80,12 @@ impl App {
 
         let current_time = Instant::now();
         let delta_time   = 16.0e-3;
-        let speed        = 1.0;
 
         let keyboard_state = KeyboardState::new();
-
-
-        let camera_staging = allocator.alloc(BufferType::Staging, std::mem::size_of::<CameraParams>() as u64).unwrap();
-        let camera_uniform = allocator.alloc(BufferType::Uniform, std::mem::size_of::<CameraParams>() as u64).unwrap();
-        let camera = Self::make_camera();
 
         let demo_scene = DemoScene::new(&base);
         let simple_scene = SimpleScene::new(&base, &mut allocator);
         let text_scene = TextScene::new(&base, &mut allocator);
-
-        let global_descriptor_set = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, base.global_descriptor_set_layout, base.max_in_flight);
-
-        // TODO: FIX THE DESC SET BINDING JANK
-        for descriptor_set in global_descriptor_set.iter() {
-            VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&camera_uniform], 0);
-        }
 
         Self {
             base,
@@ -126,16 +94,10 @@ impl App {
             demo_scene,
             simple_scene,
 
-            camera_staging,
-            camera_uniform,
-            camera,
             allocator,
-
-            global_descriptor_set,
 
             current_time,
             delta_time,
-            speed,
 
             keyboard_state,
 
@@ -151,8 +113,6 @@ impl App {
         let delta_time_dur = ct - self.current_time;
         self.delta_time = delta_time_dur.as_secs_f32();
 		self.current_time = ct;
-
-        self.handle_down_keys();
 
         self.base.cleanup_in_flight_buffers();
 
@@ -173,23 +133,6 @@ impl App {
             self.base.device.logical.begin_command_buffer(cb, &cb_begin_info).unwrap();
         }
 
-        unsafe {
-            let data_ptr = self.base.device.logical.map_memory(self.camera_staging.memory, 0, self.camera_staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-            let data_ptr = data_ptr.offset(self.camera_staging.offset as isize) as *mut CameraParams;
-            data_ptr.copy_from_nonoverlapping(&self.camera.params  as *const CameraParams, 1);
-            self.base.device.logical.unmap_memory(self.camera_staging.memory);
-
-            let copy_region = [
-                vk::BufferCopy::default()
-                    .src_offset(self.camera_staging.offset)
-                    .dst_offset(self.camera_uniform.offset)
-                    .size(self.camera_staging.size)
-            ];
-
-            self.base.device.logical.cmd_copy_buffer(cb, self.camera_staging.buffer, self.camera_uniform.buffer, &copy_region);
-        }
-
-
         match self.target_scene {
             TargetScene::Demo => {
                 self.demo_scene.update(&self.base, cb, self.delta_time);
@@ -197,7 +140,7 @@ impl App {
 
             TargetScene::Simple => {
                 let w = self.base.window.inner_size();
-                self.simple_scene.update(&self.base, cb, w.width as f32 / w.height as f32);
+                self.simple_scene.update(&self.base, cb, w.width as f32 / w.height as f32, &self.keyboard_state, self.delta_time);
             }
 
             TargetScene::Text => {
@@ -245,7 +188,7 @@ impl App {
 
             TargetScene::Simple => {
                 let current_frame = self.base.current_frame;
-                self.simple_scene.draw(&mut self.base, cb, current_frame, self.global_descriptor_set[current_frame]);
+                self.simple_scene.draw(&mut self.base, cb, current_frame);
             }
 
             TargetScene::Text => {
@@ -288,33 +231,6 @@ impl App {
         }
     }
 
-    fn handle_down_keys(&mut self) {
-        if self.keyboard_state[KeyCode::KeyA] {
-            self.camera.update(CameraAction::Left, self.delta_time * self.speed);
-        }
-
-        if self.keyboard_state[KeyCode::KeyD] {
-            self.camera.update(CameraAction::Right, self.delta_time * self.speed);
-        }
-
-        if self.keyboard_state[KeyCode::KeyW] {
-            self.camera.update(CameraAction::Forward, self.delta_time * self.speed);
-        }
-
-        if self.keyboard_state[KeyCode::KeyS] {
-            self.camera.update(CameraAction::Backward, self.delta_time * self.speed);
-        }
-
-        if self.keyboard_state[KeyCode::KeyE] {
-            self.camera.update(CameraAction::Up, self.delta_time * self.speed);
-        }
-
-        if self.keyboard_state[KeyCode::KeyQ] {
-            self.camera.update(CameraAction::Down, self.delta_time * self.speed);
-        }
-
-    }
-
     fn handle_key(&mut self, event: KeyEvent) {
         match event.physical_key {
             PhysicalKey::Code(a) => {
@@ -332,26 +248,21 @@ impl App {
                     },
                 };
 
+                self.keyboard_state[a] = event.state == ElementState::Pressed;
+
                 match a {
                     KeyCode::Escape => {
                         self.close = true;
                     }
 
-                    KeyCode::KeyA | KeyCode::KeyD | KeyCode::KeyW | KeyCode::KeyS | KeyCode::KeyE | KeyCode::KeyQ => {
-                        self.keyboard_state[a] = event.state == ElementState::Pressed;
-                    }
-
-
-                    KeyCode::KeyT => {
-                        self.reset_camera();
-                    }
-
                     KeyCode::F1 => {
                         self.target_scene = TargetScene::Empty;
+                        self.simple_scene.activated = false;
                     }
 
                     KeyCode::F2 => {
                         self.target_scene = TargetScene::Demo;
+                        self.simple_scene.activated = false;
                     }
 
                     KeyCode::F3 => {
@@ -360,6 +271,7 @@ impl App {
 
                     KeyCode::F4 => {
                         self.target_scene = TargetScene::Text;
+                        self.simple_scene.activated = false;
                     }
 
                     _ => { }
@@ -386,14 +298,6 @@ impl App {
                 }
             }
         }
-    }
-
-    fn reset_camera(&mut self) {
-        self.camera = Self::make_camera();
-    }
-
-    fn make_camera() -> Camera{
-        return Camera::new(CAMERA_LOCATION, CAMERA_DIRECTION);
     }
 }
 

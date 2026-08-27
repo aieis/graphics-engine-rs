@@ -149,7 +149,7 @@ impl DrawableMesh {
 
     pub fn draw(device: &DeviceBundle, cb: vk::CommandBuffer, graphics_pipeline: &GraphicsPipelineBundle, mesh_bundles: &[Self])  {
         unsafe {
-            // device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.graphics);
+            device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.graphics);
 
             for i in 0..mesh_bundles.len() {
                 let m = &mesh_bundles[i];
