@@ -234,9 +234,11 @@ impl App {
     fn handle_key(&mut self, event: KeyEvent) {
         match event.physical_key {
             PhysicalKey::Code(a) => {
+                self.keyboard_state[a] = event.state == ElementState::Pressed;
+
                 match self.target_scene {
                     TargetScene::Simple => {
-                        self.simple_scene.handle_key(a, event.state, event.repeat);
+                        self.simple_scene.handle_key(a, event.state, event.repeat, &self.keyboard_state);
                     },
 
                     TargetScene::Text => {
@@ -247,8 +249,6 @@ impl App {
                         // noting to do
                     },
                 };
-
-                self.keyboard_state[a] = event.state == ElementState::Pressed;
 
                 match a {
                     KeyCode::Escape => {

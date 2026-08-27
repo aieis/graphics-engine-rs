@@ -12,11 +12,11 @@ use crate::mesh::prism;
 use crate::primitives::image::PixelFormat;
 use crate::utils;
 use crate::utils::image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined};
-use crate::utils::keyboard::KeyboardState;
+use crate::utils::keyboard::{KeyboardState, KeyMod};
 use crate::vk_bundles::TextureBundle;
 use crate::{drawable::drawable_mesh::DrawableMesh, vk_base::VkBase};
 use crate::shader::{ShaderSpecialMesh, ShaderText};
-use crate::rhi::{allocator::{Allocator, BufferType}, uniform::StaticUniform, uniform::VariableUniform};
+use crate::rhi::{allocator::Allocator, uniform::StaticUniform, uniform::VariableUniform};
 use crate::scene::camera::{Camera, CameraParams, CameraAction};
 
 macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas.ff" }; }
@@ -158,26 +158,54 @@ impl SimpleScene
         }
     }
 
-    pub fn handle_key(&mut self, key: KeyCode, state: ElementState, _repeat: bool) {
+    pub fn handle_key(&mut self, key: KeyCode, state: ElementState, _repeat: bool, keyboard_state: &KeyboardState) {
 
         if state != ElementState::Pressed {
             return;
         }
 
-        match key {
+        const ACTION_MAP: [((KeyMod, KeyCode), fn(&mut SimpleScene)); 2] = [
+            ((KeyMod::None  , KeyCode::KeyO), |s: &mut SimpleScene| { s.use_global_camera = !s.use_global_camera; }),
+            ((KeyMod::None  , KeyCode::KeyT), |s: &mut SimpleScene| { s.reset_camera(); }),
+        ];
 
-            KeyCode::KeyO => {
-                self.use_global_camera = !self.use_global_camera;
-            }
-
-            KeyCode::KeyT => {
-                self.reset_camera();
-            }
-
-            _ => {
-
+        for a in ACTION_MAP {
+            let ((modifiers, key), action) = a;
+            if keyboard_state.is_key_down(modifiers, key) {
+                action(self);
             }
         }
+
+        // match key {
+
+        //     KeyCode::KeyO => {
+        //         self.use_global_camera = !self.use_global_camera;
+        //     }
+
+        //     KeyCode::KeyT => {
+        //         self.reset_camera();
+        //     }
+
+        //     KeyCode::BracketLeft => {
+        //         if keyboard_state[KeyCode::ShiftLeft] || keyboard_state[KeyCode::ShiftRight] {
+        //             self.camera.update(CameraAction::SnapPosY, -0.1);
+        //         } else {
+        //             self.camera.update(CameraAction::SnapPosX, -0.1);
+        //         }
+        //     }
+
+        //     KeyCode::BracketRight => {
+        //         if keyboard_state[KeyCode::ShiftLeft] || keyboard_state[KeyCode::ShiftRight] {
+        //             self.camera.update(CameraAction::SnapPosY, 0.1);
+        //         } else {
+        //             self.camera.update(CameraAction::SnapPosX, 0.1);
+        //         }
+        //     }
+
+        //     _ => {
+
+        //     }
+        // }
     }
 
     fn handle_down_keys(&mut self, keyboard_state: &KeyboardState, delta_time: f32) {

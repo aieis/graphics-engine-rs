@@ -6,10 +6,43 @@ pub struct KeyboardState {
     state: [bool; MAX_CODE]
 }
 
+pub enum KeyMod {
+    None,
+    Shift,
+    Ctrl,
+    Alt,
+}
+
+
 impl KeyboardState {
     pub fn new() -> KeyboardState {
         let state = [false; MAX_CODE];
         Self { state }
+    }
+
+    pub fn is_key_down(&self, modifiers: KeyMod, key: KeyCode) -> bool {
+        match modifiers {
+            KeyMod::None  => { self[key] && !self.is_any_mod_down() },
+            KeyMod::Shift => { self[key] && self.is_shift_down() },
+            KeyMod::Ctrl  => { self[key] && self.is_ctrl_down() },
+            KeyMod::Alt   => { self[key] && self.is_alt_down() },
+        }
+    }
+
+    pub fn is_shift_down(&self) -> bool {
+        self[KeyCode::ShiftLeft] && self[KeyCode::ShiftLeft]
+    }
+
+    pub fn is_ctrl_down(&self) -> bool {
+        self[KeyCode::ControlLeft] && self[KeyCode::ControlLeft]
+    }
+
+    pub fn is_alt_down(&self) -> bool {
+        self[KeyCode::AltLeft] && self[KeyCode::AltLeft]
+    }
+
+    pub fn is_any_mod_down(&self) -> bool {
+        self.is_alt_down() || self.is_shift_down() || self.is_ctrl_down()
     }
 }
 
