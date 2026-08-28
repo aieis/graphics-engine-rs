@@ -3,30 +3,42 @@ use std::ops::{Index, IndexMut};
 use winit::keyboard::KeyCode;
 
 pub struct KeyboardState {
-    state: [bool; MAX_CODE]
+    state: [bool; MAX_CODE],
+    modifiers: KeyMod
 }
 
-pub enum KeyMod {
-    None,
-    Shift,
-    Ctrl,
-    Alt,
-}
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct KeyMod(u8);
 
+impl KeyMod {
+    pub const None  : KeyMod = KeyMod(0);
+    pub const Shift : KeyMod = KeyMod(1 << 0);
+    pub const Ctrl  : KeyMod = KeyMod(1 << 1);
+    pub const Alt   : KeyMod = KeyMod(1 << 2);
+}
 
 impl KeyboardState {
     pub fn new() -> KeyboardState {
         let state = [false; MAX_CODE];
-        Self { state }
+        Self { state, modifiers: KeyMod::None }
     }
 
-    pub fn is_key_down(&self, modifiers: KeyMod, key: KeyCode) -> bool {
-        match modifiers {
-            KeyMod::None  => { self[key] && !self.is_any_mod_down() },
-            KeyMod::Shift => { self[key] && self.is_shift_down() },
-            KeyMod::Ctrl  => { self[key] && self.is_ctrl_down() },
-            KeyMod::Alt   => { self[key] && self.is_alt_down() },
-        }
+    pub fn update_modifiers(&mut self) {
+        self.modifiers = self.get_mod_flags();
+    }
+
+    pub fn is_mod_req_met(&self, mod_req: KeyMod) -> bool {
+        self.modifiers == mod_req
+    }
+
+    pub fn get_mod_flags(&self) -> KeyMod {
+        let mod_curr: u8 = {
+            self.is_shift_down() as u8 * KeyMod::Shift.0 |
+            self.is_ctrl_down()  as u8 * KeyMod::Ctrl.0  |
+            self.is_alt_down()   as u8 * KeyMod::Alt.0
+        };
+
+        KeyMod(mod_curr)
     }
 
     pub fn is_shift_down(&self) -> bool {
@@ -50,13 +62,13 @@ impl Index<KeyCode> for KeyboardState {
     type Output = bool;
 
     fn index(&self, index: KeyCode) -> &Self::Output {
-        return &self.state[get_index(index)];
+        &self.state[get_index(index)]
     }
 }
 
 impl IndexMut<KeyCode> for KeyboardState {
     fn index_mut(&mut self, index: KeyCode) -> &mut Self::Output {
-        return &mut self.state[get_index(index)];
+        &mut self.state[get_index(index)]
     }
 }
 

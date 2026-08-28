@@ -164,78 +164,97 @@ impl SimpleScene
             return;
         }
 
-        const ACTION_MAP: [((KeyMod, KeyCode), fn(&mut SimpleScene)); 2] = [
-            ((KeyMod::None  , KeyCode::KeyO), |s: &mut SimpleScene| { s.use_global_camera = !s.use_global_camera; }),
-            ((KeyMod::None  , KeyCode::KeyT), |s: &mut SimpleScene| { s.reset_camera(); }),
-        ];
 
-        for a in ACTION_MAP {
-            let ((modifiers, key), action) = a;
-            if keyboard_state.is_key_down(modifiers, key) {
-                action(self);
+        if keyboard_state.is_mod_req_met(KeyMod::None) {
+            match key {
+                KeyCode::KeyO => {
+                    self.use_global_camera = !self.use_global_camera;
+                }
+
+                KeyCode::KeyT => {
+                    self.reset_camera();
+                }
+
+                KeyCode::BracketLeft => {
+                    self.camera.update(CameraAction::SnapPosX, -0.1);
+                }
+
+                KeyCode::BracketRight => {
+                    self.camera.update(CameraAction::SnapPosX, 0.1);
+                }
+                _ => {}
+            }
+        } else if keyboard_state.is_mod_req_met(KeyMod::Shift) {
+            match key {
+                KeyCode::BracketLeft => {
+                    self.camera.update(CameraAction::SnapPosY, -0.1);
+                }
+
+                KeyCode::BracketRight => {
+                    self.camera.update(CameraAction::SnapPosY, 0.1);
+                },
+
+                _ => {}
+            }
+        } else if keyboard_state.is_mod_req_met(KeyMod::Ctrl) {
+            match key {
+                KeyCode::BracketLeft => {
+                    self.camera.update(CameraAction::SnapDirX, 0.0);
+                }
+
+                KeyCode::BracketRight => {
+                    self.camera.update(CameraAction::SnapDirY, 0.0);
+                }
+
+                _ => {}
             }
         }
-
-        // match key {
-
-        //     KeyCode::KeyO => {
-        //         self.use_global_camera = !self.use_global_camera;
-        //     }
-
-        //     KeyCode::KeyT => {
-        //         self.reset_camera();
-        //     }
-
-        //     KeyCode::BracketLeft => {
-        //         if keyboard_state[KeyCode::ShiftLeft] || keyboard_state[KeyCode::ShiftRight] {
-        //             self.camera.update(CameraAction::SnapPosY, -0.1);
-        //         } else {
-        //             self.camera.update(CameraAction::SnapPosX, -0.1);
-        //         }
-        //     }
-
-        //     KeyCode::BracketRight => {
-        //         if keyboard_state[KeyCode::ShiftLeft] || keyboard_state[KeyCode::ShiftRight] {
-        //             self.camera.update(CameraAction::SnapPosY, 0.1);
-        //         } else {
-        //             self.camera.update(CameraAction::SnapPosX, 0.1);
-        //         }
-        //     }
-
-        //     _ => {
-
-        //     }
-        // }
     }
 
     fn handle_down_keys(&mut self, keyboard_state: &KeyboardState, delta_time: f32) {
-        if keyboard_state[KeyCode::KeyA] {
-            self.camera.update(CameraAction::Left, delta_time * self.speed);
+
+        if keyboard_state.is_mod_req_met(KeyMod::None) {
+            if keyboard_state[KeyCode::KeyA] {
+                self.camera.update(CameraAction::Left, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyD] {
+                self.camera.update(CameraAction::Right, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyW] {
+                self.camera.update(CameraAction::Forward, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyS] {
+                self.camera.update(CameraAction::Backward, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyE] {
+                self.camera.update(CameraAction::Up, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyQ] {
+                self.camera.update(CameraAction::Down, delta_time * self.speed);
+            }
+        } else if keyboard_state.is_mod_req_met(KeyMod::Ctrl) {
+            if keyboard_state[KeyCode::KeyA] {
+                self.camera.update(CameraAction::RotateX, -delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyD] {
+                self.camera.update(CameraAction::RotateX, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyW] {
+                self.camera.update(CameraAction::RotateY, -delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyS] {
+                self.camera.update(CameraAction::RotateY, delta_time * self.speed);
+            }
         }
 
-        if keyboard_state[KeyCode::KeyD] {
-            self.camera.update(CameraAction::Right, delta_time * self.speed);
-        }
-
-        if keyboard_state[KeyCode::KeyW] {
-            self.camera.update(CameraAction::Forward, delta_time * self.speed);
-        }
-
-        if keyboard_state[KeyCode::KeyS] {
-            self.camera.update(CameraAction::Backward, delta_time * self.speed);
-        }
-
-        if keyboard_state[KeyCode::KeyE] {
-            self.camera.update(CameraAction::Up, delta_time * self.speed);
-        }
-
-        if keyboard_state[KeyCode::KeyQ] {
-            self.camera.update(CameraAction::Down, delta_time * self.speed);
-        }
-
-        if keyboard_state[KeyCode::KeyQ] {
-            self.camera.update(CameraAction::Down, delta_time * self.speed);
-        }
     }
 
 

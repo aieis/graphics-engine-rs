@@ -235,6 +235,7 @@ impl App {
         match event.physical_key {
             PhysicalKey::Code(a) => {
                 self.keyboard_state[a] = event.state == ElementState::Pressed;
+                self.keyboard_state.update_modifiers();
 
                 match self.target_scene {
                     TargetScene::Simple => {

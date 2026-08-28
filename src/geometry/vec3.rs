@@ -41,7 +41,7 @@ impl Vec3 {
         (self.x*self.x + self.y*self.y + self.z*self.z).sqrt()
     }
 
-    pub fn norm(v: &Vec3) -> Vec3 {
+    pub fn norm(v: Vec3) -> Vec3 {
         let l = v.length();
         let l = if l > 1e-6 { l } else { 1.0 };
         Self { x: v.x / l, y: v.y / l, z: v.z / l}

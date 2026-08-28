@@ -153,7 +153,7 @@ impl Mesh {
         }
 
         for i in 0..num_verts {
-            normals[i] = Vec3::norm(&normals[i]);
+            normals[i] = Vec3::norm(normals[i]);
         }
     }
 
