@@ -95,8 +95,8 @@ impl Mesh {
 
     }
 
-    pub fn set_colour(&mut self, colour: [f32; 3]) {
-        self.colour.fill(Vec3::from_slice(colour));
+    pub fn set_colour(&mut self, colour: Vec3) {
+        self.colour.fill(colour);
         self.dirty_colour = true;
     }
 

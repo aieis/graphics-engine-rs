@@ -24,25 +24,6 @@ impl Rect {
         }
     }
 
-    pub fn transform(&mut self, rotation: f32, translation: [f32; 2]) {
-        let s = rotation.sin();
-        let c = rotation.cos();
-
-        for i in 0..self.vertices.len() {
-            let x = self.vertices[i][0];
-            let y = self.vertices[i][1];
-
-            let xp = x * c - y * s;
-            let yp = x * s + y * c;
-            self.vertices[i] = [xp + translation[0], yp + translation[1]];
-        }
-
-        self.x = self.vertices[0][0];
-        self.y = self.vertices[0][1];
-        self.w = self.vertices[2][0] - self.x;
-        self.h = self.vertices[2][1] - self.h;
-    }
-
 	pub fn refresh_vertices(&mut self) {
 		self.vertices = [
             [self.x,        self.y],

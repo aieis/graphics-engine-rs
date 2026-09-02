@@ -14,7 +14,6 @@ pub enum CameraAction {
     SnapDirY,
     SnapPosX,
     SnapPosY,
-    ToggleType,
 }
 
 #[repr(C)]
@@ -97,7 +96,6 @@ impl Camera {
             CameraAction::SnapDirY => todo!(),
             CameraAction::SnapPosX => todo!(),
             CameraAction::SnapPosY => todo!(),
-            CameraAction::ToggleType => todo!(),
         }
     }
 

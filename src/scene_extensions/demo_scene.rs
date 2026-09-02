@@ -11,6 +11,8 @@ use crate::vk_base::VkBase;
 
 use ash::vk;
 
+const USE_AUDIO_BUFFER: bool = false;
+
 pub struct DemoScene {
     video_device: RecordPlayer,
     rect_bundles: Vec<Drawable2d>,
@@ -21,8 +23,14 @@ pub struct DemoScene {
 
 impl DemoScene {
     pub fn new(base: &VkBase) -> Self {
-        
-        let video_device = RecordPlayer::from_buffer(include_bytes!("../../assets/recordings/record1.rdbin")).unwrap();
+
+        let mut video_device = if USE_AUDIO_BUFFER {
+            RecordPlayer::from_buffer(include_bytes!("../../assets/recordings/record1.rdbin")).unwrap()
+        } else {
+            RecordPlayer::new("./assets/recordings/record1.rdbin").unwrap()
+        };
+
+        video_device.reset_player();
 
         let rect_bundles = vec![
             Drawable2d::new(&base.device, RectMesh::new(-0.9, -0.9, 0.5, 0.5, [1.0, 0.0, 0.0])),

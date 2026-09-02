@@ -10,6 +10,7 @@ pub struct KeyboardState {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeyMod(u8);
 
+#[allow(non_upper_case_globals)]
 impl KeyMod {
     pub const None  : KeyMod = KeyMod(0);
     pub const Shift : KeyMod = KeyMod(1 << 0);
@@ -51,10 +52,6 @@ impl KeyboardState {
 
     pub fn is_alt_down(&self) -> bool {
         self[KeyCode::AltLeft] && self[KeyCode::AltLeft]
-    }
-
-    pub fn is_any_mod_down(&self) -> bool {
-        self.is_alt_down() || self.is_shift_down() || self.is_ctrl_down()
     }
 }
 

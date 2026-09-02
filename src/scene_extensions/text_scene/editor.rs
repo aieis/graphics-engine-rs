@@ -16,10 +16,6 @@ impl Editor {
         }
     }
 
-    pub fn get_cursor(&self) -> (usize, usize) {
-        self.cursor
-    }
-
     pub fn insert_text(&mut self, text: &str) {
         let (mut ln, mut cpos) = self.cursor;
         for c in text.as_bytes().iter() {

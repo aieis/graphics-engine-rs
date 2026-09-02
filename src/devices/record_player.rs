@@ -6,7 +6,11 @@ pub struct RecordData {
     pub width: u32,
     pub height: u32,
     pub frame_count: usize,
+
+    // TODO: Deal with projection data
+    #[allow(unused)]
     pub projection_data: Vec<f32>,
+
     pub frame_data: Vec<u16>,
 }
 
@@ -14,7 +18,7 @@ pub struct RecordPlayer {
     pub record_data: RecordData,
     pub stream_pos: usize,
     pub current_frame: Vec<u16>,
-    pub last_frame_time: f32,
+    pub last_frame_time: std::time::Instant,
 }
 
 impl RecordPlayer {
@@ -25,7 +29,7 @@ impl RecordPlayer {
             record_data,
             stream_pos: 0,
             current_frame,
-            last_frame_time: 0.0,
+            last_frame_time: std::time::Instant::now(),
         })
     }
 
@@ -42,14 +46,25 @@ impl RecordPlayer {
             record_data,
             stream_pos: 0,
             current_frame,
-            last_frame_time: 0.0,
+            last_frame_time: std::time::Instant::now() - std::time::Duration::from_millis(34),
         })
     }
 
+    pub fn reset_player(&mut self) {
+        self.last_frame_time = std::time::Instant::now() - std::time::Duration::from_millis(34);
+        self.stream_pos = 0;
+    }
+
     pub fn poll(&mut self) -> Option<Vec<u8>> {
-        let res = Some(self.record_data.get_frame_bytes(self.stream_pos));
+        let time_after_next = self.last_frame_time.elapsed().as_millis() as f32 - 33.33;
+
+        if  time_after_next < 0.0 {
+            return None;
+        }
+
         self.stream_pos = (self.stream_pos + 1) % self.record_data.frame_count;
-        res
+        self.last_frame_time = std::time::Instant::now(); // This is not authentic playback as frames cannot be skipped
+        Some(self.record_data.get_frame_bytes(self.stream_pos))
     }
 }
 

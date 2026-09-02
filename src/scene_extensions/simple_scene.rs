@@ -11,6 +11,7 @@ use crate::geometry::vec3::Vec3;
 use crate::mesh::prism;
 use crate::primitives::image::PixelFormat;
 use crate::utils;
+use crate::utils::colours::WHITE;
 use crate::utils::image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined};
 use crate::utils::keyboard::{KeyboardState, KeyMod};
 use crate::vk_bundles::TextureBundle;
@@ -82,6 +83,7 @@ impl SimpleScene
         let prism_b = prism::make_debug_prism(Vec3::new(0.0, 0.0, -5.0), Vec3::new(2.0, 3.0, 8.0));
 
         let mut cube_c = prism::make_prism(Vec3::new(5.0, 0.0, 0.0), Vec3::of(0.5), Vec3::new(0.0, 0.0, 1.0));
+        cube_c.set_colour(WHITE);
         cube_c.rotate_x(45_f32.to_radians());
         cube_c.rotate_z(45_f32.to_radians());
         cube_c.recompute_normals();

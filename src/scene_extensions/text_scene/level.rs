@@ -99,6 +99,16 @@ impl TextScene
                 self.editor.advance_cursor_forward();
             },
 
+            KeyCode::ArrowUp  => {
+                self.editor.advance_cursor_up();
+                self.editor.advance_cursor_down();
+            }
+
+            KeyCode::ArrowDown => {
+                self.editor.advance_cursor_down();
+                self.editor.advance_cursor_up();
+            },
+
             _ => {
 
             }

@@ -10,9 +10,16 @@ pub enum BufferType {
     Staging,
 
 
+
+    // TODO: Change the remaining rogue allocations to use the runtime allocator
+    #[allow(unused)]
+
     /* Properties: DEVICE_LOCAL
      * Usage: TRANSFER_DST | VERTEX_BUFFER */
     DeviceVertex,
+
+    // TODO: Change the remaining rogue allocations to use the runtime allocator
+    #[allow(unused)]
 
     /* Properties: DEVICE_LOCAL
      * Usage: TRANSFER_DST | INDEX_BUFFER */
