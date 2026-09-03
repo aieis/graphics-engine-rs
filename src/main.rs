@@ -40,7 +40,7 @@ enum TargetScene {
     Empty
 }
 
-const STARTING_SCENE: TargetScene = TargetScene::Text;
+const STARTING_SCENE: TargetScene = TargetScene::Simple;
 
 struct App {
     base: VkBase,
