@@ -49,21 +49,20 @@ pub struct Camera {
 
 impl Camera {
 
-    pub fn new(location: Vec3, direction: Vec3) -> Self {
-
-        // TODO: Fix this bug
-
-        let y_sin = direction.y;
-        let y_angle = y_sin.asin();
+    pub fn new(location: Vec3, x_angle: f32, y_angle: f32) -> Self {
+        let y_sin   = y_angle.sin();
         let y_cos   = y_angle.cos();
 
-        let x_angle = (direction.x / y_cos).acos();
         let x_sin   = x_angle.sin();
         let x_cos   = x_angle.cos();
 
+        let direction = Self::calc_direction(x_sin, x_cos, y_sin, y_cos);
+        let right = Self::calc_right(direction);
+
+
         Self {
             params: CameraParams { location, direction, up: Vec3::Y },
-            right: Vec3::X,
+            right,
             x_angle,
             x_sin,
             x_cos,
@@ -87,8 +86,8 @@ impl Camera {
                 self.x_sin = self.x_angle.sin();
                 self.x_cos = self.x_angle.cos();
 
-                self.params.direction = Vec3::new(self.y_cos * self.x_cos, self.y_sin, self.y_cos * self.x_sin);
-                self.right = Vec3::norm(Vec3::cross(self.params.direction, UP));
+                self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
+                self.right = Self::calc_right(self.params.direction);
             },
 
             CameraAction::RotateY => {
@@ -97,8 +96,8 @@ impl Camera {
                 self.y_sin = self.y_angle.sin();
                 self.y_cos = self.y_angle.cos();
 
-                self.params.direction = Vec3::new(self.y_cos * self.x_cos, self.y_sin, self.y_cos * self.x_sin);
-                self.right = Vec3::norm(Vec3::cross(self.params.direction, UP));
+                self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
+                self.right = Self::calc_right(self.params.direction);
 
             },
 
@@ -107,8 +106,8 @@ impl Camera {
 
                 self.x_sin = self.x_angle.sin();
                 self.x_cos = self.x_angle.cos();
-                self.params.direction = Vec3::new(self.y_cos * self.x_cos, self.y_sin, self.y_cos * self.x_sin);
-                self.right = Vec3::norm(Vec3::cross(self.params.direction, UP));
+                self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
+                self.right = Self::calc_right(self.params.direction);
             },
 
             CameraAction::SnapDirY => {
@@ -117,8 +116,8 @@ impl Camera {
 
                 self.y_sin = self.y_angle.sin();
                 self.y_cos = self.y_angle.cos();
-                self.params.direction = Vec3::new(self.y_cos * self.x_cos, self.y_sin, self.y_cos * self.x_sin);
-                self.right = Vec3::norm(Vec3::cross(self.params.direction, UP));
+                self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
+                self.right = Self::calc_right(self.params.direction);
             }
 
             CameraAction::SnapPosX => {
@@ -130,8 +129,15 @@ impl Camera {
                 self.params.location  += delta * UP;
                 self.params.location.y = round_to_nearest(self.params.location.y, delta);
             }
-
         }
+    }
+
+    fn calc_direction(x_sin: f32, x_cos: f32, y_sin: f32, y_cos: f32) -> Vec3 {
+        Vec3::norm(Vec3::new(y_cos * x_cos, y_sin, y_cos * x_sin))
+    }
+
+    fn calc_right(direction: Vec3) -> Vec3 {
+        Vec3::norm(Vec3::cross(direction, UP))
     }
 
 }

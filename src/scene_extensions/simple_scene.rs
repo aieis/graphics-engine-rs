@@ -27,8 +27,12 @@ const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
 const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
 
-const CAMERA_LOCATION  : Vec3 = Vec3::new(0.0, 0.0, 10.0);
-const CAMERA_DIRECTION : Vec3 = Vec3::new(0.0, 0.0, -1.0);
+const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 0.0, 10.0);
+const CAMERA_DIRECTION_X : f32  = std::f32::consts::PI / 2.0;
+const CAMERA_DIRECTION_Y : f32  = 0.0;
+
+const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
+const CAMERA_ROTATION_SPEED_FAC: f32 = 0.5;
 
 #[repr(C)]
 struct SpecialMeshShaderParams {
@@ -153,7 +157,7 @@ impl SimpleScene
             use_global_camera: false,
             going_down: false,
             translation_amount: 0.0,
-            speed: 1.0,
+            speed: CAMERA_MOVEMENT_SPEED,
             previous_time: Instant::now(),
             initialized: false,
             activated: false,
@@ -241,19 +245,19 @@ impl SimpleScene
             }
         } else if keyboard_state.is_mod_req_met(KeyMod::Ctrl) {
             if keyboard_state[KeyCode::KeyA] {
-                self.camera.update(CameraAction::RotateX, -delta_time * self.speed);
+                self.camera.update(CameraAction::RotateX, -delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
             }
 
             if keyboard_state[KeyCode::KeyD] {
-                self.camera.update(CameraAction::RotateX, delta_time * self.speed);
+                self.camera.update(CameraAction::RotateX, delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
             }
 
             if keyboard_state[KeyCode::KeyW] {
-                self.camera.update(CameraAction::RotateY, -delta_time * self.speed);
+                self.camera.update(CameraAction::RotateY, -delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
             }
 
             if keyboard_state[KeyCode::KeyS] {
-                self.camera.update(CameraAction::RotateY, delta_time * self.speed);
+                self.camera.update(CameraAction::RotateY, delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
             }
         }
 
@@ -264,8 +268,8 @@ impl SimpleScene
         self.camera = Self::make_camera();
     }
 
-    fn make_camera() -> Camera{
-        return Camera::new(CAMERA_LOCATION, CAMERA_DIRECTION);
+    fn make_camera() -> Camera {
+        return Camera::new(CAMERA_LOCATION, CAMERA_DIRECTION_X, CAMERA_DIRECTION_Y);
     }
 
     pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, aspect_ratio: f32, keyboard_state: &KeyboardState, delta_time: f32) {
