@@ -16,7 +16,7 @@ mod components;
 use std::time::{Duration, Instant};
 
 use scene_extensions::{demo_scene::DemoScene, simple_scene::SimpleScene, text_scene::TextScene, global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING};
-use utils::keyboard::KeyboardState;
+use utils::keyboard_mouse::KeyboardMouseState;
 use vk_bundles::*;
 use rhi::allocator::{Allocator, AllocatorSizeInfo, BufferType};
 use shader::*;
@@ -26,7 +26,7 @@ use ash::vk;
 use vk_base::VkBase;
 
 use winit::{
-    event::{ElementState, Event, KeyEvent, WindowEvent},
+    event::{DeviceEvent, DeviceId, ElementState, Event, KeyEvent, MouseButton, WindowEvent},
     event_loop::EventLoop,
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowBuilder},
@@ -55,7 +55,7 @@ struct App {
     current_time: Instant,
     delta_time: f32,
 
-    keyboard_state: KeyboardState,
+    keyboard_state: KeyboardMouseState,
 
     allocator: Allocator,
     shader_poll_time: Instant
@@ -81,7 +81,7 @@ impl App {
         let current_time = Instant::now();
         let delta_time   = 16.0e-3;
 
-        let keyboard_state = KeyboardState::new();
+        let keyboard_state = KeyboardMouseState::new();
 
         let demo_scene = DemoScene::new(&base);
         let simple_scene = SimpleScene::new(&base, &mut allocator);
@@ -140,7 +140,7 @@ impl App {
 
             TargetScene::Simple => {
                 let w = self.base.window.inner_size();
-                self.simple_scene.update(&self.base, cb, w.width as f32 / w.height as f32, &self.keyboard_state, self.delta_time);
+                self.simple_scene.update(&self.base, cb, (w.width, w.height), &self.keyboard_state, self.delta_time);
             }
 
             TargetScene::Text => {
@@ -204,6 +204,27 @@ impl App {
         self.base.render(&cb, image_index);
     }
 
+    fn handle_device_event(&mut self, _device_id: DeviceId, event: DeviceEvent) {
+        match event {
+            DeviceEvent::MouseMotion { delta } => {
+                self.keyboard_state.update_cursor_pos(delta);
+                match self.target_scene {
+                    TargetScene::Simple => {
+                        self.simple_scene.handle_mouse_motion(delta, &self.keyboard_state);
+                    },
+
+                    _ => {
+
+                    }
+                }
+            }
+
+            _ => {
+
+            }
+        }
+    }
+
     fn handle_event(&mut self, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
@@ -219,17 +240,42 @@ impl App {
                 self.base.window.request_redraw();
             }
 
-            WindowEvent::KeyboardInput {
-                device_id: _,
-                event,
-                is_synthetic: _,
-            } => {
+            WindowEvent::KeyboardInput { device_id: _, event, is_synthetic: _, } => {
                 self.handle_key(event);
             }
+
+            WindowEvent::MouseInput { device_id: _, state, button } => {
+                self.handle_mouse_button_event(state, button);
+                match self.target_scene {
+                    TargetScene::Simple => {
+                        self.simple_scene.handle_mouse_button_event(state, button);
+                    },
+
+                    _ => {
+
+                    }
+                }
+            }
+
             _ => {
+
             }
         }
     }
+
+    fn handle_mouse_button_event(&mut self, state: ElementState, button: MouseButton) {
+        self.keyboard_state[button] = state == ElementState::Pressed;
+        match self.target_scene {
+            TargetScene::Simple => {
+                // TODO: Complete
+            }
+
+            _ => {
+                // noting to do
+            },
+        };
+    }
+
 
     fn handle_key(&mut self, event: KeyEvent) {
         match event.physical_key {
@@ -334,6 +380,10 @@ fn main() {
         match event {
             Event::WindowEvent { event, window_id } if window_id == app.base.window.id() => {
                 app.handle_event(event);
+            }
+
+            Event::DeviceEvent { device_id, event } => {
+                app.handle_device_event(device_id, event);
             }
 
             Event::AboutToWait => {

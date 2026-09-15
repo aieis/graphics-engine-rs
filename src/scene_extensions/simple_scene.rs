@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use ash::vk;
 use stb_truetype::{FontAtlas, CHARS_LEN};
-use winit::event::ElementState;
+use winit::event::{ElementState, MouseButton};
 use winit::keyboard::KeyCode;
 
 use crate::ShaderRect;
@@ -13,7 +13,7 @@ use crate::primitives::image::PixelFormat;
 use crate::utils;
 use crate::utils::colours::WHITE;
 use crate::utils::image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined};
-use crate::utils::keyboard::{KeyboardState, KeyMod};
+use crate::utils::keyboard_mouse::{KeyboardMouseState, KeyMod};
 use crate::vk_bundles::TextureBundle;
 use crate::{drawable::drawable_mesh::DrawableMesh, vk_base::VkBase};
 use crate::shader::{ShaderSpecialMesh, ShaderText};
@@ -33,6 +33,7 @@ const CAMERA_DIRECTION_Y : f32  = 0.0;
 
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
 const CAMERA_ROTATION_SPEED_FAC: f32 = 0.5;
+const CAMERA_MOUSE_DRAG_SPEED: f32   = 0.2;
 
 #[repr(C)]
 struct SpecialMeshShaderParams {
@@ -69,6 +70,8 @@ pub struct SimpleScene
     use_global_camera: bool,
     going_down: bool,
     translation_amount: f32,
+    window_size: (u32, u32),
+    cursor_delta: (f64, f64),
     speed: f32,
 
 	previous_time: Instant,
@@ -157,6 +160,8 @@ impl SimpleScene
             use_global_camera: false,
             going_down: false,
             translation_amount: 0.0,
+            window_size: (512, 512),
+            cursor_delta: (0.0, 0.0),
             speed: CAMERA_MOVEMENT_SPEED,
             previous_time: Instant::now(),
             initialized: false,
@@ -164,7 +169,36 @@ impl SimpleScene
         }
     }
 
-    pub fn handle_key(&mut self, key: KeyCode, state: ElementState, _repeat: bool, keyboard_state: &KeyboardState) {
+    pub fn handle_mouse_button_event(&mut self, state: ElementState, button: MouseButton) {
+        if button == MouseButton::Left && state == ElementState::Pressed {
+            self.cursor_delta = (0.0, 0.0)
+        }
+    }
+
+    pub fn handle_mouse_motion(&mut self, delta: (f64, f64), keyboard_state: &KeyboardMouseState) {
+
+        if keyboard_state[MouseButton::Left] {
+
+            self.cursor_delta = (self.cursor_delta.0 + delta.0, self.cursor_delta.1 + delta.1);
+
+            if self.cursor_delta.0.abs() >= 2.0 ||  self.cursor_delta.1.abs() >= 2.0 {
+                if self.cursor_delta.0.abs() >= 2.0 {
+                    let dx = CAMERA_MOUSE_DRAG_SPEED * self.cursor_delta.0 as f32 / (self.window_size.0 as f32  / 2.0 ) * std::f32::consts::PI;
+                    self.camera.update(CameraAction::RotateX, dx);
+                }
+
+                if self.cursor_delta.1.abs() >= 2.0 {
+                    let dy = CAMERA_MOUSE_DRAG_SPEED * self.cursor_delta.1 as f32 / (self.window_size.1 as f32  / 2.0 ) * std::f32::consts::PI;
+                    self.camera.update(CameraAction::RotateY, -dy);
+                }
+
+                self.cursor_delta = (0.0, 0.0);
+            }
+        }
+    }
+
+
+    pub fn handle_key(&mut self, key: KeyCode, state: ElementState, _repeat: bool, keyboard_state: &KeyboardMouseState) {
 
         if state != ElementState::Pressed {
             return;
@@ -217,7 +251,7 @@ impl SimpleScene
         }
     }
 
-    fn handle_down_keys(&mut self, keyboard_state: &KeyboardState, delta_time: f32) {
+    fn handle_down_keys(&mut self, keyboard_state: &KeyboardMouseState, delta_time: f32) {
 
         if keyboard_state.is_mod_req_met(KeyMod::None) {
             if keyboard_state[KeyCode::KeyA] {
@@ -272,8 +306,10 @@ impl SimpleScene
         return Camera::new(CAMERA_LOCATION, CAMERA_DIRECTION_X, CAMERA_DIRECTION_Y);
     }
 
-    pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, aspect_ratio: f32, keyboard_state: &KeyboardState, delta_time: f32) {
+    pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, window_size: (u32, u32), keyboard_state: &KeyboardMouseState, delta_time: f32) {
 
+        self.window_size = window_size;
+        let aspect_ratio = window_size.0 as f32 / window_size.1 as f32;
         self.handle_down_keys(keyboard_state, delta_time);
         self.camera_buffer.update(&base.device, cb, &self.camera.params);
 

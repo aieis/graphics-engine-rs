@@ -1,7 +1,7 @@
 mat4 create_projection_matrix(float fov, float aspect) {
-    float F = 30.0;
+    float F = 50.0;
     float N = 0.1;
-    float C = 1 / tan(fov);
+    float C = 1 / tan(fov/2);
 
     float X = C / aspect;
 
@@ -12,12 +12,12 @@ mat4 create_projection_matrix(float fov, float aspect) {
     float A = -F/(F-N);
     float B = -(N*F)/(F-N);
 
-    mat4  proj = mat4 ( X,  0,  0, 0,
-                        0,  C,  0, 0,
-                        0,  0,  A, B,
-                        0,  0, -1, 0);
+    mat4  proj = mat4 ( X,  0,  0,  0,
+                        0, -C,  0,  0,
+                        0,  0,  A, -1,
+                        0,  0,  B,  0);
 
-    return transpose(proj);
+    return proj;
 }
 
 
@@ -32,14 +32,18 @@ mat4 create_view_matrix(vec3 pos, vec3 dir, vec3 up) {
      * -> c' = dot(a,v)
      */
 
-    vec3 f = normalize(dir);
-    vec3 r = normalize(cross(f, up));
-    vec3 u = normalize(cross(f, r));
+    vec3 f =  normalize(dir);
+    vec3 r =  normalize(cross(f, up));
+    vec3 u = -normalize(cross(f, r));
+    vec3 b = -f;
 
-    vec3 disp = vec3(-dot(r,pos), -dot(u,pos), -dot(f,pos)); // Explain
+    vec3 disp = vec3(-dot(r,pos), -dot(u,pos), -dot(b,pos)); // Explain
 
 
-    mat4 view = mat4(vec4(r, 0.0), vec4(u, 0.0), vec4(f, 0.0), vec4(disp, 1.0));
+    mat4 view = mat4(vec4(r.x, u.x, b.x, 0.0),
+                     vec4(r.y, u.y, b.y, 0.0),
+                     vec4(r.z, u.z, b.z, 0.0),                     
+                     vec4(disp, 1.0));
 
     return view;
 }

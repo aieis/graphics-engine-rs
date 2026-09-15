@@ -47,12 +47,13 @@ void main() {
         camera_up  = G.CamUp;
     }
 
-    float FOV   = PI / 4;
+    float FOV   = PI / 3;
 
     mat4 view = create_view_matrix(camera_pos, camera_dir, camera_up);
 
     vec4 world_pos = view * vec4(pos, 1.0);
-    world_pos.z *= -1;
+    // world_pos.y *= -1;
+    // world_pos.z *= -1;
 
     mat4 proj = create_projection_matrix(FOV, S.Aspect);
     vec4 proj_pos = proj * world_pos;
@@ -64,7 +65,20 @@ void main() {
         float alpha = ((light_cos * -1) + 1) / 2;
         float dark_factor = 0.8 * alpha;
 
+        // Small colour test
+
+        // vec3 v = vec3(0, 0, 1.0);
+        // mat3 m = mat3(
+        //               vec3(0.0, 0.0, 0.0),
+        //               vec3(0.0, 0.0, 0.0),
+        //               vec3(0.2, 1.0, 0.8)
+        //               );
+
+        // vec3 test_col = m * v;
+
+
         frag_color = 0.9 * vec3(col.x, col.y, col.z) * ( 1 - dark_factor);
+        // frag_color = 0.9 * test_col * ( 1 - dark_factor);
 
     } else if (TARGET == TARGET_COL_DEPTH) {
         float dz_col = (world_pos.z - camera_pos.z - 1) / 8.0;

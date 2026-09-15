@@ -1,9 +1,11 @@
 use std::ops::{Index, IndexMut};
 
-use winit::keyboard::KeyCode;
+use winit::{event::MouseButton, keyboard::KeyCode};
 
-pub struct KeyboardState {
+pub struct KeyboardMouseState {
     state: [bool; MAX_CODE],
+    mouse_state: [bool; MAX_BUTTON_INDEX],
+    cursor_position: (f64, f64),
     modifiers: KeyMod
 }
 
@@ -18,10 +20,15 @@ impl KeyMod {
     pub const Alt   : KeyMod = KeyMod(1 << 2);
 }
 
-impl KeyboardState {
-    pub fn new() -> KeyboardState {
+impl KeyboardMouseState {
+    pub fn new() -> KeyboardMouseState {
         let state = [false; MAX_CODE];
-        Self { state, modifiers: KeyMod::None }
+        let mouse_state = [false; MAX_BUTTON_INDEX];
+        Self { state, modifiers: KeyMod::None, mouse_state, cursor_position: (0.0, 0.0) }
+    }
+
+    pub fn update_cursor_pos(&mut self, cursor_position: (f64, f64)) {
+        self.cursor_position = cursor_position;
     }
 
     pub fn update_modifiers(&mut self) {
@@ -55,7 +62,7 @@ impl KeyboardState {
     }
 }
 
-impl Index<KeyCode> for KeyboardState {
+impl Index<KeyCode> for KeyboardMouseState {
     type Output = bool;
 
     fn index(&self, index: KeyCode) -> &Self::Output {
@@ -63,12 +70,26 @@ impl Index<KeyCode> for KeyboardState {
     }
 }
 
-impl IndexMut<KeyCode> for KeyboardState {
+impl IndexMut<KeyCode> for KeyboardMouseState {
     fn index_mut(&mut self, index: KeyCode) -> &mut Self::Output {
         &mut self.state[get_index(index)]
     }
 }
 
+
+impl Index<MouseButton> for KeyboardMouseState {
+    type Output = bool;
+
+    fn index(&self, index: MouseButton) -> &Self::Output {
+        &self.mouse_state[get_mouse_button_index(index)]
+    }
+}
+
+impl IndexMut<MouseButton> for KeyboardMouseState {
+    fn index_mut(&mut self, index: MouseButton) -> &mut Self::Output {
+        &mut self.mouse_state[get_mouse_button_index(index)]
+    }
+}
 
 const fn get_index(k: KeyCode) -> usize
 {
@@ -272,3 +293,17 @@ const fn get_index(k: KeyCode) -> usize
 }
 
 const MAX_CODE: usize = get_index(KeyCode::F35) + 1;
+
+
+const fn get_mouse_button_index(k: MouseButton) -> usize {
+    match k {
+        MouseButton::Left     => 0,
+        MouseButton::Right    => 1,
+        MouseButton::Middle   => 2,
+        MouseButton::Back     => 3,
+        MouseButton::Forward  => 4,
+        MouseButton::Other(_) => 5,
+    }
+}
+
+const MAX_BUTTON_INDEX: usize = get_mouse_button_index(MouseButton::Other(0)) + 1;
