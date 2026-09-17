@@ -2,9 +2,8 @@
 use std::marker::PhantomData;
 
 use crate::DeviceBundle;
-use crate::BufferType;
-use crate::Allocator;
 use crate::BufferBundle;
+use crate::{Allocator, BufferType};
 
 use ash::vk;
 
@@ -77,5 +76,42 @@ impl VariableUniform {
             device.logical.cmd_copy_buffer(cb, self.staging.buffer, self.uniform.buffer, &copy_region);
         }
     }
+}
 
+
+/// An attempt to use Const Generics with enums
+
+pub struct VariableDeviceBuffer {
+    pub staging: BufferBundle,
+    pub buffer: BufferBundle,
+}
+
+impl VariableDeviceBuffer {
+
+    pub fn new(allocator: &mut Allocator, max_size: u64, buffer_type: BufferType) -> Self{
+        let staging = allocator.alloc(BufferType::Staging, max_size).unwrap();
+        let buffer  = allocator.alloc(buffer_type, max_size).unwrap();
+
+        Self {
+            staging,
+            buffer,
+         }
+    }
+
+    pub fn update<T>(&mut self, device: &DeviceBundle, cb: vk::CommandBuffer, val: &[T])  {
+        unsafe {
+            let data_ptr = device.logical.map_memory(self.staging.memory, self.staging.offset, self.staging.size, vk::MemoryMapFlags::empty()).unwrap() as *mut T;
+            data_ptr.copy_from_nonoverlapping(val.as_ptr(), val.len());
+            device.logical.unmap_memory(self.staging.memory);
+
+            let copy_region = [
+                vk::BufferCopy::default()
+                    .src_offset(self.staging.offset)
+                    .dst_offset(self.buffer.offset)
+                    .size(self.staging.size)
+            ];
+
+            device.logical.cmd_copy_buffer(cb, self.staging.buffer, self.buffer.buffer, &copy_region);
+        }
+    }
 }

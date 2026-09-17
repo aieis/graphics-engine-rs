@@ -3,9 +3,11 @@ use std::{
 };
 
 use ash::vk;
-use comptime_register_macro::{register_shader, shaders_registry};
+use comptime_register_macro::{register_shader, shaders_registry, shader_comp_info_gen};
 
 use crate::{geometry::vec3::Vec3, vk_bundles::{DescSetBinding, DeviceBundle, PipelineDescriptor}};
+
+shader_comp_info_gen!();
 
 #[register_shader("mesh")]
 pub struct ShaderMesh { }
@@ -567,7 +569,7 @@ impl ShaderRegistry {
         };
 
         let static_shaders = ShaderRegistry::SHADER_DETAILS.map(|shader_info| {
-            ShaderRegistry::get_compiled_shader(device, &asset_dir, shader_info.0, shader_info.1, shader_info.2(), shader_info.3)
+            ShaderRegistry::get_compiled_shader(device, &asset_dir, shader_info.name, shader_info.id, (shader_info.pipeline_desc)(), shader_info.use_global)
         });
 
         Self {
@@ -625,8 +627,8 @@ impl ShaderRegistry {
         // created by the shader_registry proc_macro_attribute of the struct
         println!();
         println!("Shader Registry - {} Shaders Registered:", ShaderRegistry::SHADER_DETAILS.len());
-        for (name, id, _, _) in ShaderRegistry::SHADER_DETAILS {
-            println!("\t Shader {} ({})", name, id);
+        for s in ShaderRegistry::SHADER_DETAILS {
+            println!("\t Shader {} ({})", s.name, s.id);
         }
         println!();
 

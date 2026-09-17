@@ -2,33 +2,26 @@ use ash::vk;
 
 use crate::{utils::buffer, vk_base::VkBase, vk_bundles::{BufferBundle, DeviceBundle}};
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum BufferType {
 
     /* Properties: HOST_VISIBLE | HOST_COHERENT
      * Usage: TRANSFER_SRC */
-    Staging,
+    Staging = 0,
 
-
-
-    // TODO: Change the remaining rogue allocations to use the runtime allocator
-    #[allow(unused)]
 
     /* Properties: DEVICE_LOCAL
      * Usage: TRANSFER_DST | VERTEX_BUFFER */
-    DeviceVertex,
-
-    // TODO: Change the remaining rogue allocations to use the runtime allocator
-    #[allow(unused)]
+    DeviceVertex = 1,
 
     /* Properties: DEVICE_LOCAL
      * Usage: TRANSFER_DST | INDEX_BUFFER */
-    DeviceIndex,
+    DeviceIndex = 2,
 
 
     /* Properties: DEVICE_LOCAL
      * Usage: TRANSFER_DST | UNIFORM_BUFFER */
-    Uniform,
+    Uniform = 3,
 
 }
 

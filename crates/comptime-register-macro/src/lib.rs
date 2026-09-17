@@ -9,6 +9,23 @@ struct ShaderInfo
     name: String,
 }
 
+#[proc_macro]
+pub fn shader_comp_info_gen(_input: TokenStream) -> TokenStream {
+
+    let output = quote! {
+        struct ShaderCompInfo<PD, PC> {
+            name: &'static str,
+            id: usize,
+            pipeline_desc: fn() -> PD,
+            use_global: bool,
+
+            push_constants: Option<PC>
+        }
+    };
+
+    output.into()
+}
+
 static REGISTERED_SHADERS: LazyLock<Arc<Mutex<Vec<ShaderInfo>>>> = LazyLock::new(||{ Arc::new(Mutex::new(Vec::new())) });
 
 #[proc_macro_attribute]
@@ -49,7 +66,13 @@ pub fn shaders_registry(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let generate_code = shape_names.iter().map(|shape_info| {
         let ident_token = Ident::new(&shape_info.name, Span::call_site());
         quote! {
-            (#ident_token::NAME, #ident_token::ID, #ident_token::pipeline_descriptor as fn() -> PipelineDescriptor, #ident_token::GLOBAL_UNIFORMS),
+            ShaderCompInfo::<PipelineDescriptor, u32> {
+                name: #ident_token::NAME,
+                id: #ident_token::ID,
+                pipeline_desc: #ident_token::pipeline_descriptor as fn() -> PipelineDescriptor,
+                use_global: #ident_token::GLOBAL_UNIFORMS,
+                push_constants: None
+            },
         }
     });
 
@@ -57,7 +80,7 @@ pub fn shaders_registry(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #input_struct
 
         impl #ident_token {
-            pub const SHADER_DETAILS: [(&str, usize, fn() -> PipelineDescriptor, bool); #num_shaders] = [ #(#generate_code)* ];
+            pub const SHADER_DETAILS: [ShaderCompInfo<PipelineDescriptor, u32>; #num_shaders] = [ #(#generate_code)* ];
         }
     };
 

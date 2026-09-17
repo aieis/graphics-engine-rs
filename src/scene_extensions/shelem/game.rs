@@ -1,3 +1,6 @@
+use super::data_structures::Arr;
+
+#[derive(Copy, Clone, Debug)]
 pub enum Suit {
     Blank   = 0,
     Spade   = 1,
@@ -6,6 +9,8 @@ pub enum Suit {
     Club    = 4
 }
 
+
+#[derive(Copy, Clone, Debug)]
 pub enum Rank {
     Blank = 0,
     Ace   = 1,
@@ -23,14 +28,19 @@ pub enum Rank {
     King  = 13,
 }
 
+
+#[derive(Copy, Clone, Debug)]
 pub struct Card {
     pub suit: Suit,
-    pub rank: Rank
+    pub rank: Rank,
+    pub visible: bool
 }
 
 pub struct Hand {
+    pub cards: Arr<Card, 13>,
 }
 
 pub struct ShelemGame {
-
+    pub playerA: Hand,
+    pub playerB: Hand,
 }
