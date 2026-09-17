@@ -15,7 +15,14 @@ mod components;
 
 use std::time::{Duration, Instant};
 
-use scene_extensions::{demo_scene::DemoScene, simple_scene::SimpleScene, text_scene::TextScene, global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING};
+use scene_extensions::{
+    demo_scene::DemoScene,
+    simple_scene::SimpleScene,
+    text_scene::TextScene,
+    shelem::ShelemScene,
+    global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING
+};
+
 use utils::keyboard_mouse::KeyboardMouseState;
 use vk_bundles::*;
 use rhi::allocator::{Allocator, AllocatorSizeInfo, BufferType};
@@ -33,14 +40,16 @@ use winit::{
 };
 
 
+#[derive(PartialEq)]
 enum TargetScene {
     Demo,
     Simple,
     Text,
+    Shelem,
     Empty
 }
 
-const STARTING_SCENE: TargetScene = TargetScene::Simple;
+const STARTING_SCENE: TargetScene = TargetScene::Shelem;
 
 struct App {
     base: VkBase,
@@ -49,6 +58,7 @@ struct App {
     demo_scene: DemoScene,
     simple_scene: SimpleScene,
     text_scene: TextScene,
+    shelem_scene: ShelemScene,
 
     close: bool,
 
@@ -86,6 +96,7 @@ impl App {
         let demo_scene = DemoScene::new(&base);
         let simple_scene = SimpleScene::new(&base, &mut allocator);
         let text_scene = TextScene::new(&base, &mut allocator);
+        let shelem_scene = ShelemScene::new(&base, &mut allocator);
 
         Self {
             base,
@@ -93,6 +104,7 @@ impl App {
             target_scene: STARTING_SCENE,
             demo_scene,
             simple_scene,
+            shelem_scene,
 
             allocator,
 
@@ -148,6 +160,11 @@ impl App {
                 self.text_scene.update(&self.base, cb, w.width as f32 / w.height as f32, w.width as f32);
             }
 
+            TargetScene::Shelem => {
+                let w = self.base.window.inner_size();
+                self.shelem_scene.update(&self.base, cb, (w.width, w.height), &self.keyboard_state, self.delta_time);
+            }
+
             TargetScene::Empty => {
                 // Do nothing
             },
@@ -196,6 +213,11 @@ impl App {
                 self.text_scene.draw(&mut self.base, cb, current_frame);
             }
 
+            TargetScene::Shelem => {
+                let current_frame = self.base.current_frame;
+                self.shelem_scene.draw(&mut self.base, cb, current_frame);
+            }
+
             TargetScene::Empty => {
                 // Do nothing
             },
@@ -211,6 +233,10 @@ impl App {
                 match self.target_scene {
                     TargetScene::Simple => {
                         self.simple_scene.handle_mouse_motion(delta, &self.keyboard_state);
+                    },
+
+                    TargetScene::Shelem => {
+                        self.shelem_scene.handle_mouse_motion(delta, &self.keyboard_state);
                     },
 
                     _ => {
@@ -246,15 +272,6 @@ impl App {
 
             WindowEvent::MouseInput { device_id: _, state, button } => {
                 self.handle_mouse_button_event(state, button);
-                match self.target_scene {
-                    TargetScene::Simple => {
-                        self.simple_scene.handle_mouse_button_event(state, button);
-                    },
-
-                    _ => {
-
-                    }
-                }
             }
 
             _ => {
@@ -267,8 +284,13 @@ impl App {
         self.keyboard_state[button] = state == ElementState::Pressed;
         match self.target_scene {
             TargetScene::Simple => {
-                // TODO: Complete
-            }
+                self.simple_scene.handle_mouse_button_event(state, button);
+            },
+
+            TargetScene::Shelem => {
+                self.shelem_scene.handle_mouse_button_event(state, button);
+            },
+
 
             _ => {
                 // noting to do
@@ -286,11 +308,16 @@ impl App {
                 match self.target_scene {
                     TargetScene::Simple => {
                         self.simple_scene.handle_key(a, event.state, event.repeat, &self.keyboard_state);
-                    },
+                    }
 
                     TargetScene::Text => {
                         self.text_scene.handle_key(a, event.state, event.repeat);
                     }
+
+                    TargetScene::Shelem => {
+                        self.shelem_scene.handle_key(a, event.state, event.repeat, &self.keyboard_state);
+                    }
+
 
                     _ => {
                         // noting to do
@@ -313,13 +340,19 @@ impl App {
                     }
 
                     KeyCode::F3 => {
+                        self.simple_scene.activated = self.target_scene != TargetScene::Simple;
                         self.target_scene = TargetScene::Simple;
                     }
 
                     KeyCode::F4 => {
                         self.target_scene = TargetScene::Text;
-                        self.simple_scene.activated = false;
                     }
+
+                    KeyCode::F5 => {
+                        self.shelem_scene.activated = self.target_scene != TargetScene::Shelem;
+                        self.target_scene = TargetScene::Shelem;
+                    }
+
 
                     _ => { }
                 }
