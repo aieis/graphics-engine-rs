@@ -688,14 +688,21 @@ impl VkBase {
             .logic_op(vk::LogicOp::CLEAR)
             .attachments(&color_blend_attachment_states);
 
-        let layout_create_info = match ubo.as_ref() {
-            Some(ubo) => {
-                vk::PipelineLayoutCreateInfo::default()
-                    .set_layouts(&ubo.layouts)
-            },
+        let mut layout_create_info = vk::PipelineLayoutCreateInfo::default();
 
-            None => vk::PipelineLayoutCreateInfo::default()
+        let range = if let Some(push_constants) = pipeline_desc.push_constants.as_ref() {
+            vec![*push_constants]
+        } else {
+            vec![]
         };
+
+        layout_create_info = layout_create_info.push_constant_ranges(&range);
+
+
+        if let Some(ubo) = ubo.as_ref() {
+            layout_create_info = layout_create_info.set_layouts(&ubo.layouts);
+        };
+
 
         let pipeline_layout = unsafe { device.logical.create_pipeline_layout(&layout_create_info, None).unwrap() };
 

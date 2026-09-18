@@ -27,6 +27,7 @@ use utils::keyboard_mouse::KeyboardMouseState;
 use vk_bundles::*;
 use rhi::allocator::{Allocator, AllocatorSizeInfo, BufferType};
 use shader::*;
+use utils::{image::{begin_single_time_command, end_single_time_command}};
 
 use ash::vk;
 
@@ -96,7 +97,11 @@ impl App {
         let demo_scene = DemoScene::new(&base);
         let simple_scene = SimpleScene::new(&base, &mut allocator);
         let text_scene = TextScene::new(&base, &mut allocator);
-        let shelem_scene = ShelemScene::new(&base, &mut allocator);
+        let mut shelem_scene = ShelemScene::new(&base, &mut allocator);
+
+        let cb = begin_single_time_command(&base.device, base.spare_command.pool);
+        shelem_scene.initialize_scene(&base, cb);
+        end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
 
         Self {
             base,
@@ -349,7 +354,6 @@ impl App {
                     }
 
                     KeyCode::F5 => {
-                        self.shelem_scene.activated = self.target_scene != TargetScene::Shelem;
                         self.target_scene = TargetScene::Shelem;
                     }
 

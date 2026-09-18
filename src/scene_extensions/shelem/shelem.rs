@@ -10,7 +10,7 @@ use crate::geometry::vec3::Vec3;
 use crate::primitives::image::PixelFormat;
 use crate::rhi::{allocator::Allocator, uniform::StaticUniform, uniform::VariableUniform};
 use crate::scene::camera::{Camera, CameraParams};
-use crate::shader::ShaderText;
+use crate::shader::{ShaderText, ShaderCard};
 use crate::utils::{
     image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined},
     keyboard_mouse::KeyboardMouseState
@@ -41,7 +41,8 @@ struct SharedFontData {
 
 pub struct ShelemScene
 {
-    time : Instant,
+    cards : Vec<DrawableCard>,
+    time  : Instant,
 	frame_timer: [DrawableText; 1],
 
     global_descriptor_set: Vec<vk::DescriptorSet>,
@@ -54,10 +55,6 @@ pub struct ShelemScene
     window_size: (u32, u32),
 
 	previous_time: Instant,
-
-    initialized: bool,
-
-    pub activated: bool,
 }
 
 impl ShelemScene
@@ -82,8 +79,13 @@ impl ShelemScene
         let camera_buffer = StaticUniform::<CameraParams>::new(allocator);
 
         let global_descriptor_set = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, base.global_descriptor_set_layout, base.max_in_flight);
+        for descriptor_set in global_descriptor_set.iter() {
+            VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&camera_buffer.uniform], 0);
+        }
 
         Self {
+            cards: vec![],
+
             time,
             frame_timer,
             global_descriptor_set,
@@ -95,16 +97,32 @@ impl ShelemScene
 
             window_size: (0, 0),
             previous_time: Instant::now(),
-            initialized: false,
-            activated: false,
         }
     }
 
-    pub fn handle_mouse_button_event(&mut self, state: ElementState, button: MouseButton) {
+    pub fn initialize_scene(&mut self, base: &VkBase, cb: vk::CommandBuffer) {
+        let data: [(u32, u32); CHARS_LEN] = self.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
+        self.font_data.glyph_buffer.update(&base.device, cb, &data);
+
+        let size = self.font_data.atlas_texture.staging.size;
+
+        unsafe {
+            let data_ptr = base.device.logical.map_memory(self.font_data.atlas_texture.staging.memory, self.font_data.atlas_texture.staging.offset, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
+            data_ptr.copy_from_nonoverlapping(self.font_data.atlas.atlas.data.as_ptr(), size as usize);
+            base.device.logical.unmap_memory(self.font_data.atlas_texture.staging.memory);
+        }
+
+		crate::utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
+        crate::utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, cb, &self.font_data.atlas_texture);
+        crate::utils::image::copy_buffer_to_image(&base.device, cb, &self.font_data.atlas_texture, &self.font_data.atlas_texture.staging, self.font_data.atlas.atlas.w, self.font_data.atlas.atlas.h);
+        crate::utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
+    }
+
+    pub fn handle_mouse_button_event(&mut self, _state: ElementState, _button: MouseButton) {
 
     }
 
-    pub fn handle_mouse_motion(&mut self, delta: (f64, f64), keyboard_state: &KeyboardMouseState) {
+    pub fn handle_mouse_motion(&mut self, _delta: (f64, f64), keyboard_state: &KeyboardMouseState) {
 
         if keyboard_state[MouseButton::Left] {
 
@@ -112,11 +130,11 @@ impl ShelemScene
     }
 
 
-    pub fn handle_key(&mut self, key: KeyCode, state: ElementState, _repeat: bool, keyboard_state: &KeyboardMouseState) {
+    pub fn handle_key(&mut self, _key: KeyCode, _state: ElementState, _repeat: bool, _keyboard_state: &KeyboardMouseState) {
 
     }
 
-    fn handle_down_keys(&mut self, keyboard_state: &KeyboardMouseState, delta_time: f32) {
+    fn handle_down_keys(&mut self, _keyboard_state: &KeyboardMouseState, _delta_time: f32) {
 
     }
 
@@ -131,49 +149,18 @@ impl ShelemScene
         self.handle_down_keys(keyboard_state, delta_time);
         self.camera_buffer.update(&base.device, cb, &self.camera.params);
 
-        if !self.initialized {
-
-            let data: [(u32, u32); CHARS_LEN] = self.font_data.atlas.desc.glyph_info.each_ref().map(|g| { (g.w as u32, g.h as u32) });
-            self.font_data.glyph_buffer.update(&base.device, cb, &data);
-
-            unsafe {
-                let size = self.font_data.atlas_texture.staging.size;
-                let data_ptr = base.device.logical.map_memory(self.font_data.atlas_texture.staging.memory, self.font_data.atlas_texture.staging.offset, size, vk::MemoryMapFlags::empty()).unwrap() as *mut u8;
-                data_ptr.copy_from_nonoverlapping(self.font_data.atlas.atlas.data.as_ptr(), size as usize);
-                base.device.logical.unmap_memory(self.font_data.atlas_texture.staging.memory);
-
-				crate::utils::image::transition_image_layout::<ImageLayout_Undefined, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
-                crate::utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, cb, &self.font_data.atlas_texture);
-                crate::utils::image::copy_buffer_to_image(&base.device, cb, &self.font_data.atlas_texture, &self.font_data.atlas_texture.staging, self.font_data.atlas.atlas.w, self.font_data.atlas.atlas.h);
-                crate::utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
-            }
-
-            self.initialized = true;
-        }
-
-        if !self.activated {
-
-            for descriptor_set in self.global_descriptor_set.iter() {
-                VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&self.camera_buffer.uniform], 0);
-            }
-
-            self.activated = true;
-        }
-
 		let frame_time_ms = self.previous_time.elapsed().as_millis();
 		let frame_time = format!("{:>12} ", frame_time_ms);
 		self.frame_timer[0].set_text(&frame_time);
 		self.frame_timer[0].kern_text(&self.font_data.atlas);
 		self.previous_time = Instant::now();
 
+        DrawableCard::update(&base.device, cb, &mut self.cards);
 		DrawableText::update(&base.device, cb, &mut self.frame_timer, 1024.0, aspect_ratio);
     }
 
     pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize) {
-        if !self.activated {
-            return;
-        }
-
+        DrawableCard::draw(&base.device, cb, &base.graphics_pipelines[ShaderCard::ID], &self.cards);
         DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.frame_timer);
     }
 

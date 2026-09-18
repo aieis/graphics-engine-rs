@@ -35,7 +35,8 @@ pub struct DescSetBinding {
 pub struct PipelineDescriptor {
     pub ubo_layout_bindings: Vec<DescSetBinding>,
     pub vertex_bindings: Vec<vk::VertexInputBindingDescription>,
-    pub vertex_attributes: Vec<vk::VertexInputAttributeDescription>
+    pub vertex_attributes: Vec<vk::VertexInputAttributeDescription>,
+    pub push_constants: Option<vk::PushConstantRange>,
 }
 
 pub struct GraphicsPipelineDescSetData {

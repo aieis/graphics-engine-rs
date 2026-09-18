@@ -57,6 +57,7 @@ impl ShaderMesh  {
             ubo_layout_bindings,
             vertex_bindings,
             vertex_attributes,
+	        push_constants: None,
         }
     }
 }
@@ -115,6 +116,74 @@ impl ShaderSpecialMesh  {
             ubo_layout_bindings,
             vertex_bindings,
             vertex_attributes,
+	        push_constants: None,
+        }
+    }
+}
+
+
+#[allow(nonstandard_style)]
+pub struct ShaderCard_Params {
+    pub aspect: f32
+}
+
+#[register_shader("card")]
+pub struct ShaderCard { }
+
+impl ShaderCard  {
+    const GLOBAL_UNIFORMS: bool = true;
+
+    pub fn pipeline_descriptor() -> PipelineDescriptor {
+        let ubo_layout_bindings = vec![
+        ];
+
+        let vertex_bindings = vec![
+            vk::VertexInputBindingDescription::default()
+                .binding(0)
+                .stride(std::mem::size_of::<Vec3>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+
+            vk::VertexInputBindingDescription::default()
+                .binding(1)
+                .stride(std::mem::size_of::<Vec3>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+
+            vk::VertexInputBindingDescription::default()
+                .binding(2)
+                .stride(std::mem::size_of::<Vec3>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX)
+        ];
+
+        let vertex_attributes = vec![
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32G32B32_SFLOAT),
+
+            vk::VertexInputAttributeDescription::default()
+                .binding(1)
+                .location(1)
+                .format(vk::Format::R32G32B32_SFLOAT),
+
+            vk::VertexInputAttributeDescription::default()
+                .binding(2)
+                .location(2)
+                .format(vk::Format::R32G32B32_SFLOAT),
+
+        ];
+
+        let push_constants = Some(
+            vk::PushConstantRange::default()
+                .stage_flags(vk::ShaderStageFlags::VERTEX)
+                .offset(0)
+                .size(std::mem::size_of::<ShaderCard_Params>() as u32)
+        );
+
+        PipelineDescriptor {
+            ubo_layout_bindings,
+            vertex_bindings,
+            vertex_attributes,
+	        push_constants,
         }
     }
 }
@@ -154,6 +223,7 @@ impl ShaderRect {
             ubo_layout_bindings,
             vertex_bindings,
             vertex_attributes,
+	        push_constants: None,
         }
     }
 }
@@ -201,6 +271,7 @@ impl ShaderTexture {
             ubo_layout_bindings,
             vertex_bindings,
             vertex_attributes,
+	        push_constants: None,
         }
     }
 }
@@ -257,6 +328,7 @@ impl ShaderText {
             ubo_layout_bindings,
             vertex_bindings,
             vertex_attributes,
+	        push_constants: None,
         }
     }
 }

@@ -3,6 +3,7 @@ use ash::vk;
 use crate::mesh::Mesh;
 use crate::{DeviceBundle, GraphicsPipelineBundle};
 
+use crate::shader::ShaderCard_Params;
 use crate::rhi::{allocator::{Allocator, BufferType}, uniform::VariableDeviceBuffer};
 
 pub struct DrawableCard {
@@ -11,11 +12,12 @@ pub struct DrawableCard {
     pub col: VariableDeviceBuffer,
     pub ind: VariableDeviceBuffer,
     pub normals: VariableDeviceBuffer,
+    pub params: ShaderCard_Params,
 }
 
 impl DrawableCard {
 
-    pub fn new(mesh: Mesh, allocator: &mut Allocator) -> Self {
+    pub fn new(allocator: &mut Allocator, mesh: Mesh) -> Self {
 
         let size_vrt = mesh.size_vrt() as u64;
         let size_col = mesh.size_col() as u64;
@@ -27,7 +29,9 @@ impl DrawableCard {
         let normals = VariableDeviceBuffer::new(allocator, size_normals, BufferType::DeviceVertex);
         let ind     = VariableDeviceBuffer::new(allocator, size_ind, BufferType::DeviceIndex);
 
-        Self { mesh, vbo, col, ind, normals }
+        let params = ShaderCard_Params { aspect: 1.0 };
+
+        Self { mesh, vbo, col, ind, normals, params }
     }
 
     pub fn dirty(&self) -> bool {
@@ -69,14 +73,15 @@ impl DrawableCard {
         return recorded;
     }
 
-    pub fn draw(device: &DeviceBundle, cb: vk::CommandBuffer, graphics_pipeline: &GraphicsPipelineBundle, mesh_bundles: &[Self])  {
+    pub fn draw(device: &DeviceBundle, cb: vk::CommandBuffer, pso: &GraphicsPipelineBundle, mesh_bundles: &[Self])  {
         unsafe {
-            device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline.graphics);
+            device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
 
             for i in 0..mesh_bundles.len() {
                 let m = &mesh_bundles[i];
                 let bufs = [m.vbo.buffer.buffer, m.col.buffer.buffer, m.normals.buffer.buffer];
                 let offs = [m.vbo.buffer.offset, m.col.buffer.offset, m.normals.buffer.offset];
+                device.logical.cmd_push_constants(cb, pso.layout, vk::ShaderStageFlags::VERTEX, 0, std::slice::from_raw_parts(&m.params as *const _ as *const u8, std::mem::size_of::<ShaderCard_Params>()));
                 device.logical.cmd_bind_vertex_buffers(cb, 0, &bufs, &offs);
                 device.logical.cmd_bind_index_buffer(cb, m.ind.buffer.buffer, 0, vk::IndexType::UINT16);
                 device.logical.cmd_draw_indexed(cb, m.mesh.indices.len() as u32, 1, 0, 0, 0);
