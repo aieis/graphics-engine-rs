@@ -102,6 +102,14 @@ impl ops::Mul<Vec4> for f32 {
     }
 }
 
+impl ops::Neg for Vec4 {
+    type Output = Vec4;
+
+    fn neg(self) -> Self::Output {
+        Self::Output { x: -self.x, y: -self.y, z: -self.z, w: -self.w }
+    }
+}
+
 impl fmt::Display for Vec4 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({:>6.2}, {:>6.2}, {:>6.2}, {:>6.2})", self.x, self.y, self.z, self.w)

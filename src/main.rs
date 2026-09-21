@@ -83,10 +83,10 @@ impl App {
         let base = VkBase::new(window, 3, "./assets/shaders", GLOBAL_DESCRIPTOR_SET_BINDING.clone());
 
         let mut allocator = Allocator::new(&base, AllocatorSizeInfo {
-            staging: 10*1024,
+            staging: 20*1024,
             device_vertex: 10*1024,
             device_index: 10*1024,
-            uniform_buffer: 10*1024,
+            uniform_buffer: 20*1024,
         });
 
         let current_time = Instant::now();
@@ -392,6 +392,7 @@ impl Drop for App {
             self.demo_scene.release(&self.base);
             self.simple_scene.release(&self.base);
             self.text_scene.release(&self.base);
+            self.shelem_scene.release(&self.base);
             self.allocator.release(&self.base.device);
         }
     }

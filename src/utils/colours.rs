@@ -8,3 +8,5 @@ pub const YELLOW : Vec3 = Vec3::new(1.0, 1.0, 0.0);
 pub const VIOLET : Vec3 = Vec3::new(1.0, 0.0, 1.0);
 pub const CYAN   : Vec3 = Vec3::new(0.0, 1.0, 1.0);
 pub const WHITE  : Vec3 = Vec3::of(1.0);
+
+pub const METAL_GREY : Vec3 = Vec3::of(0.2);

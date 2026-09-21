@@ -1,5 +1,4 @@
-use crate::geometry::vec3::Vec3;
-
+use crate::geometry::{Vec3, Vec4, Mat4};
 
 pub enum CameraAction {
     Right,
@@ -59,6 +58,12 @@ impl Camera {
         let direction = Self::calc_direction(x_sin, x_cos, y_sin, y_cos);
         let right = Self::calc_right(direction);
 
+        println!(
+            "Camera Calculated Direction: \n\t x_angle: {} \n\t y_angle: {} \n\t direction: {}",
+            x_angle * 360.0 / PIx2,
+            y_angle * 360.0 / PIx2,
+            direction
+        );
 
         Self {
             params: CameraParams { location, direction, up: Vec3::Y },
@@ -139,6 +144,61 @@ impl Camera {
     fn calc_right(direction: Vec3) -> Vec3 {
         Vec3::norm(Vec3::cross(direction, UP))
     }
+
+    fn create_projection_matrix(fov: f32, aspect: f32) -> Mat4 {
+        let F: f32 = 50.0;
+        let N: f32 = 0.1;
+        let C: f32 = 1.0 / (fov/2.0).tan();
+
+        let X: f32 = C / aspect;
+
+        // z' = Az + B
+        // z'' = z' / -z
+        // So we need an A and B such that z' gets mapped to 0 when z==N and 1 when at z==F
+        // (A*N+B) / (-N) = 0 and (A*F+B)/(-F) = 1
+        let A: f32 = -F/(F-N);
+        let B: f32 = -(N*F)/(F-N);
+
+        let proj: Mat4 = Mat4::new(
+            Vec4::new(X  ,  0.0,  0.0,  0.0),
+            Vec4::new(0.0, -C  ,  0.0,  0.0),
+            Vec4::new(0.0,  0.0,  A  , -1.0),
+            Vec4::new(0.0,  0.0,  B  ,  0.0)
+        );
+
+        return proj;
+    }
+
+
+    fn create_view_matrix(pos: Vec3, dir: Vec3, up: Vec3) -> Mat4 {
+
+        /*
+         * The premise as follows the component of a vector v onto a basis can be derived as follows
+         * cos(t) = c' / |v| because the vector forms the hypotenuse (imagine vector (1, 1) on the cartesian grid)
+         * -> c' = |v| * cos(t)
+         * -> c' = 1 * |v| * cos(t) so if you are projecting onto a vector 'a' of length 1 then we get
+         * -> c' = |a| * |v| * cos(t) which is the dot product
+         * -> c' = dot(a,v)
+         */
+
+        let f: Vec3 =  Vec3::norm(dir);
+        let r: Vec3 =  Vec3::norm(Vec3::cross(f, up));
+        let u: Vec3 = -Vec3::norm(Vec3::cross(f, r));
+        let b: Vec3 = -f;
+
+        let disp = Vec3::new(-Vec3::dot(r,pos), -Vec3::dot(u,pos), -Vec3::dot(b,pos)); // Explain
+
+
+        let view = Mat4::new(
+            Vec4::new(r.x, u.x, b.x, 0.0),
+            Vec4::new(r.y, u.y, b.y, 0.0),
+            Vec4::new(r.z, u.z, b.z, 0.0),
+            Vec4::new(disp.x, disp.y, disp.z, 1.0)
+        );
+
+        return view;
+    }
+
 
 }
 

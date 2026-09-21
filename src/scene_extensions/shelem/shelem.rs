@@ -8,12 +8,14 @@ use winit::keyboard::KeyCode;
 use crate::drawable::{drawable_card::DrawableCard, drawable_text::DrawableText};
 use crate::geometry::vec3::Vec3;
 use crate::primitives::image::PixelFormat;
+use crate::mesh::prism;
+use crate::utils::colours::METAL_GREY;
 use crate::rhi::{allocator::Allocator, uniform::StaticUniform, uniform::VariableUniform};
-use crate::scene::camera::{Camera, CameraParams};
+use crate::scene::camera::{Camera, CameraParams, CameraAction};
 use crate::shader::{ShaderText, ShaderCard};
 use crate::utils::{
     image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined},
-    keyboard_mouse::KeyboardMouseState
+    keyboard_mouse::{KeyboardMouseState, KeyMod}
 };
 
 use crate::vk_base::VkBase;
@@ -25,13 +27,15 @@ macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../../assets/fonts/Atlas_Ios
 const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
 const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
-const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 0.0, 10.0);
-const CAMERA_DIRECTION_X : f32  =  std::f32::consts::PI / 2.0;
+const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 2.0, 0.0);
+const CAMERA_DIRECTION_X : f32  = -std::f32::consts::PI / 2.0;
 const CAMERA_DIRECTION_Y : f32  = -std::f32::consts::PI / 4.0;
 
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
 const CAMERA_ROTATION_SPEED_FAC: f32 = 0.5;
 const CAMERA_MOUSE_DRAG_SPEED: f32   = 0.2;
+
+const CARD_SIZE: Vec3 = Vec3::new(0.48, 0.02, 0.62);
 
 struct SharedFontData {
     atlas: FontAtlas,
@@ -54,6 +58,8 @@ pub struct ShelemScene
 
     window_size: (u32, u32),
 
+    speed: f32,
+    cursor_delta: (f64, f64),
 	previous_time: Instant,
 }
 
@@ -83,8 +89,20 @@ impl ShelemScene
             VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&camera_buffer.uniform], 0);
         }
 
+        const DC: f32 = 0.1 * CARD_SIZE.x;
+        const D: f32 = CARD_SIZE.x + DC;
+        const N: f32 = 5.0;
+        const W: f32 = N * CARD_SIZE.x + (N-1.0) * DC;
+        const S: f32 = - W / 2.0 + CARD_SIZE.x / 2.0;
+
+        let mut cards = Vec::new();
+        for i in 0..N as usize {
+            cards.push(DrawableCard::new(allocator, prism::make_prism(Vec3::new(S + D * i as f32, 0.0, -2.0), CARD_SIZE, METAL_GREY)));
+        }
+
+
         Self {
-            cards: vec![],
+            cards,
 
             time,
             frame_timer,
@@ -96,6 +114,8 @@ impl ShelemScene
             camera_buffer,
 
             window_size: (0, 0),
+            speed: CAMERA_MOVEMENT_SPEED,
+            cursor_delta: (0.0, 0.0),
             previous_time: Instant::now(),
         }
     }
@@ -118,24 +138,134 @@ impl ShelemScene
         crate::utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
     }
 
-    pub fn handle_mouse_button_event(&mut self, _state: ElementState, _button: MouseButton) {
-
+    pub fn handle_mouse_button_event(&mut self, state: ElementState, button: MouseButton) {
+        if button == MouseButton::Left && state == ElementState::Pressed {
+            self.cursor_delta = (0.0, 0.0)
+        }
     }
 
-    pub fn handle_mouse_motion(&mut self, _delta: (f64, f64), keyboard_state: &KeyboardMouseState) {
+    pub fn handle_mouse_motion(&mut self, delta: (f64, f64), keyboard_state: &KeyboardMouseState) {
 
         if keyboard_state[MouseButton::Left] {
 
+            self.cursor_delta = (self.cursor_delta.0 + delta.0, self.cursor_delta.1 + delta.1);
+
+            const MIN_DISP: f64 = 2.0;
+            if self.cursor_delta.0.abs() >= MIN_DISP ||  self.cursor_delta.1.abs() >= MIN_DISP {
+                if self.cursor_delta.0.abs() >= MIN_DISP {
+                    let dx = CAMERA_MOUSE_DRAG_SPEED * self.cursor_delta.0 as f32 / (self.window_size.0 as f32  / 2.0 ) * std::f32::consts::PI;
+                    self.camera.update(CameraAction::RotateX, dx);
+                }
+
+                if self.cursor_delta.1.abs() >= MIN_DISP {
+                    let dy = CAMERA_MOUSE_DRAG_SPEED * self.cursor_delta.1 as f32 / (self.window_size.1 as f32  / 2.0 ) * std::f32::consts::PI;
+                    self.camera.update(CameraAction::RotateY, -dy);
+                }
+
+                self.cursor_delta = (0.0, 0.0);
+            }
         }
     }
 
 
-    pub fn handle_key(&mut self, _key: KeyCode, _state: ElementState, _repeat: bool, _keyboard_state: &KeyboardMouseState) {
+    pub fn handle_key(&mut self, key: KeyCode, state: ElementState, _repeat: bool, keyboard_state: &KeyboardMouseState) {
+
+        if state != ElementState::Pressed {
+            return;
+        }
+
+
+        if keyboard_state.is_mod_req_met(KeyMod::None) {
+            match key {
+                KeyCode::KeyT => {
+                    self.reset_camera();
+                }
+
+                KeyCode::BracketLeft => {
+                    self.camera.update(CameraAction::SnapPosX, -0.1);
+                }
+
+                KeyCode::BracketRight => {
+                    self.camera.update(CameraAction::SnapPosX, 0.1);
+                }
+                _ => {}
+            }
+        } else if keyboard_state.is_mod_req_met(KeyMod::Shift) {
+            match key {
+                KeyCode::BracketLeft => {
+                    self.camera.update(CameraAction::SnapPosY, -0.1);
+                }
+
+                KeyCode::BracketRight => {
+                    self.camera.update(CameraAction::SnapPosY, 0.1);
+                },
+
+                _ => {}
+            }
+        } else if keyboard_state.is_mod_req_met(KeyMod::Ctrl) {
+            match key {
+                KeyCode::BracketLeft => {
+                    self.camera.update(CameraAction::SnapDirX, 0.0);
+                }
+
+                KeyCode::BracketRight => {
+                    self.camera.update(CameraAction::SnapDirY, 0.0);
+                }
+
+                _ => {}
+            }
+        }
+    }
+
+    fn handle_down_keys(&mut self, keyboard_state: &KeyboardMouseState, delta_time: f32) {
+
+        if keyboard_state.is_mod_req_met(KeyMod::None) {
+            if keyboard_state[KeyCode::KeyA] {
+                self.camera.update(CameraAction::Left, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyD] {
+                self.camera.update(CameraAction::Right, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyW] {
+                self.camera.update(CameraAction::Forward, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyS] {
+                self.camera.update(CameraAction::Backward, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyE] {
+                self.camera.update(CameraAction::Up, delta_time * self.speed);
+            }
+
+            if keyboard_state[KeyCode::KeyQ] {
+                self.camera.update(CameraAction::Down, delta_time * self.speed);
+            }
+        } else if keyboard_state.is_mod_req_met(KeyMod::Ctrl) {
+            if keyboard_state[KeyCode::KeyA] {
+                self.camera.update(CameraAction::RotateX, -delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
+            }
+
+            if keyboard_state[KeyCode::KeyD] {
+                self.camera.update(CameraAction::RotateX, delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
+            }
+
+            if keyboard_state[KeyCode::KeyW] {
+                self.camera.update(CameraAction::RotateY, -delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
+            }
+
+            if keyboard_state[KeyCode::KeyS] {
+                self.camera.update(CameraAction::RotateY, delta_time * self.speed * CAMERA_ROTATION_SPEED_FAC);
+            }
+        }
 
     }
 
-    fn handle_down_keys(&mut self, _keyboard_state: &KeyboardMouseState, _delta_time: f32) {
 
+    fn reset_camera(&mut self) {
+        self.camera = Self::make_camera();
     }
 
     fn make_camera() -> Camera {
@@ -160,6 +290,16 @@ impl ShelemScene
     }
 
     pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize) {
+        let pso = &base.graphics_pipelines[ShaderCard::ID];
+
+        unsafe {
+            base.device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
+        }
+
+        unsafe {
+            base.device.logical.cmd_bind_descriptor_sets(cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0, &[self.global_descriptor_set[current_image]], &[]);
+        }
+
         DrawableCard::draw(&base.device, cb, &base.graphics_pipelines[ShaderCard::ID], &self.cards);
         DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.frame_timer);
     }
@@ -167,6 +307,7 @@ impl ShelemScene
     pub fn release(&mut self, base: &VkBase) {
 
         DrawableText::release(&base.device, &mut self.frame_timer);
+        DrawableCard::release(&base.device, &mut self.cards);
 
         unsafe {
 			base.device.logical.destroy_buffer(self.font_data.atlas_texture.staging.buffer, None);

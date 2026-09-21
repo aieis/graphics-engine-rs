@@ -37,6 +37,10 @@ impl Vec3 {
         }
     }
 
+    pub fn dot(a: Vec3, b: Vec3) -> f32 {
+        a.x * b.x + a.y * b.y + a.z * b.z
+    }
+
     pub fn length(&self) -> f32 {
         (self.x*self.x + self.y*self.y + self.z*self.z).sqrt()
     }
@@ -105,6 +109,15 @@ impl ops::Mul<Vec3> for f32 {
         Self::Output { x: self * rhs.x, y : self * rhs.y, z: self * rhs.z }
     }
 }
+
+impl ops::Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Self::Output { x: -self.x, y: -self.y, z: -self.z }
+    }
+}
+
 
 impl fmt::Display for Vec3 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
