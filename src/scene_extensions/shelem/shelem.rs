@@ -27,9 +27,9 @@ macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../../assets/fonts/Atlas_Ios
 const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
 const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
-const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 2.0, 0.0);
+const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 5.0, 1.0);
 const CAMERA_DIRECTION_X : f32  = -std::f32::consts::PI / 2.0;
-const CAMERA_DIRECTION_Y : f32  = -std::f32::consts::PI / 4.0;
+const CAMERA_DIRECTION_Y : f32  = -std::f32::consts::PI / 8.0 * 3.0;
 
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
 const CAMERA_ROTATION_SPEED_FAC: f32 = 0.5;
@@ -89,15 +89,16 @@ impl ShelemScene
             VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&camera_buffer.uniform], 0);
         }
 
-        const DC: f32 = 0.1 * CARD_SIZE.x;
-        const D: f32 = CARD_SIZE.x + DC;
-        const N: f32 = 5.0;
-        const W: f32 = N * CARD_SIZE.x + (N-1.0) * DC;
-        const S: f32 = - W / 2.0 + CARD_SIZE.x / 2.0;
+        const DC : f32 = 0.1 * CARD_SIZE.x;
+        const D  : f32 = CARD_SIZE.x + DC;
+        const N  : f32 = 3.0;
+        const W  : f32 = N * CARD_SIZE.x + (N-1.0) * DC;
+        const S  : f32 = - W / 2.0 + CARD_SIZE.x / 2.0;
 
         let mut cards = Vec::new();
         for i in 0..N as usize {
             cards.push(DrawableCard::new(allocator, prism::make_prism(Vec3::new(S + D * i as f32, 0.0, -2.0), CARD_SIZE, METAL_GREY)));
+            cards.push(DrawableCard::new(allocator, prism::make_prism(Vec3::new(S + D * i as f32, 0.0,  2.0), CARD_SIZE, METAL_GREY)));
         }
 
 

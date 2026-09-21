@@ -27,9 +27,10 @@ const UP: Vec3 = Vec3::Y;
 
 #[allow(non_upper_case_globals)]
 const  PIx2        : f32 = std::f32::consts::PI * 2.0;
+const  PI_2        : f32 = std::f32::consts::PI / 2.0;
 const  PI_4        : f32 = std::f32::consts::PI / 4.0;
 const  PI_8        : f32 = std::f32::consts::PI / 8.0;
-const  ANGLE_Y_MAX : f32 =  PI_4;
+const  ANGLE_Y_MAX : f32 =  PI_2 - PI_8;
 const  ANGLE_Y_MIN : f32 = -ANGLE_Y_MAX;
 
 pub struct Camera {
