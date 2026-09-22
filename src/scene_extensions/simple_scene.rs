@@ -30,6 +30,7 @@ const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 0.0, 10.0);
 const CAMERA_DIRECTION_X : f32  = std::f32::consts::PI / 2.0;
 const CAMERA_DIRECTION_Y : f32  = 0.0;
+const CAMERA_FOV         : f32  = std::f32::consts::PI / 3.0;
 
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
 const CAMERA_ROTATION_SPEED_FAC: f32 = 0.5;
@@ -136,7 +137,9 @@ impl SimpleScene
             // Drawable2d::new(&base.device, RectMesh::new(-0.25, -0.25, 0.5, 0.5, [0.0, 0.01, 0.01]))
         ];
 
-        let camera = Self::make_camera();
+        let window_size = (512, 512);
+
+        let camera = Self::make_camera(window_size.0 as f32, window_size.1 as f32, CAMERA_FOV);
         let camera_buffer = StaticUniform::<CameraParams>::new(allocator);
 
         let global_descriptor_set = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, base.global_descriptor_set_layout, base.max_in_flight);
@@ -160,7 +163,7 @@ impl SimpleScene
             use_global_camera: false,
             going_down: false,
             translation_amount: 0.0,
-            window_size: (512, 512),
+            window_size,
             cursor_delta: (0.0, 0.0),
             speed: CAMERA_MOVEMENT_SPEED,
             previous_time: Instant::now(),
@@ -299,11 +302,11 @@ impl SimpleScene
 
 
     fn reset_camera(&mut self) {
-        self.camera = Self::make_camera();
+        self.camera = Self::make_camera(self.window_size.0 as f32, self.window_size.1 as f32, CAMERA_FOV);
     }
 
-    fn make_camera() -> Camera {
-        return Camera::new(CAMERA_LOCATION, CAMERA_DIRECTION_X, CAMERA_DIRECTION_Y);
+    fn make_camera(width: f32, height: f32, fov: f32) -> Camera {
+        return Camera::new(CAMERA_LOCATION, CAMERA_DIRECTION_X, CAMERA_DIRECTION_Y, width, height, fov);
     }
 
     pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, window_size: (u32, u32), keyboard_state: &KeyboardMouseState, delta_time: f32) {

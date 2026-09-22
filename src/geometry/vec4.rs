@@ -34,6 +34,8 @@ impl Vec4 {
         (self.x*self.x + self.y*self.y + self.z*self.z + self.w*self.w).sqrt()
     }
 
+
+
     pub fn norm(v: &Vec4) -> Vec4 {
         let l = v.length();
         let l = if l > 1e-6 { l } else { 1.0 };

@@ -15,12 +15,13 @@ pub enum CameraAction {
     SnapPosY,
 }
 
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct CameraParams {
     pub location: Vec3,
     pub direction: Vec3,
-    pub up: Vec3
-
+    pub up: Vec3,
+    pub view: Mat4,
+    pub projection: Mat4
 }
 
 const UP: Vec3 = Vec3::Y;
@@ -45,11 +46,16 @@ pub struct Camera {
     y_cos: f32,
 
     right: Vec3,
+
+    width: f32,
+    height: f32,
+    fov: f32
+
 }
 
 impl Camera {
 
-    pub fn new(location: Vec3, x_angle: f32, y_angle: f32) -> Self {
+    pub fn new(location: Vec3, x_angle: f32, y_angle: f32, width: f32, height: f32, fov: f32) -> Self {
         let y_sin   = y_angle.sin();
         let y_cos   = y_angle.cos();
 
@@ -58,6 +64,20 @@ impl Camera {
 
         let direction = Self::calc_direction(x_sin, x_cos, y_sin, y_cos);
         let right = Self::calc_right(direction);
+        let up = Vec3::Y;
+
+        let view = Self::create_view_matrix(location, direction, up);
+        let projection = Self::create_projection_matrix(fov, if height <= 0.0 { width / height } else { 1.0 }) ;
+
+
+        let params = CameraParams {
+            location,
+            direction,
+            up,
+            view,
+            projection
+        };
+
 
         println!(
             "Camera Calculated Direction: \n\t x_angle: {} \n\t y_angle: {} \n\t direction: {}",
@@ -67,7 +87,7 @@ impl Camera {
         );
 
         Self {
-            params: CameraParams { location, direction, up: Vec3::Y },
+            params,
             right,
             x_angle,
             x_sin,
@@ -75,6 +95,10 @@ impl Camera {
             y_angle,
             y_sin,
             y_cos,
+
+            width,
+            height,
+            fov,
         }
     }
 
@@ -136,6 +160,9 @@ impl Camera {
                 self.params.location.y = round_to_nearest(self.params.location.y, delta);
             }
         }
+
+        self.params.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
+        self.params.projection = Self::create_projection_matrix(self.fov, if self.height <= 0.0 { self.width / self.height } else { 1.0 });
     }
 
     fn calc_direction(x_sin: f32, x_cos: f32, y_sin: f32, y_cos: f32) -> Vec3 {
@@ -163,11 +190,11 @@ impl Camera {
         let proj: Mat4 = Mat4::new(
             Vec4::new(X  ,  0.0,  0.0,  0.0),
             Vec4::new(0.0, -C  ,  0.0,  0.0),
-            Vec4::new(0.0,  0.0,  A  , -1.0),
-            Vec4::new(0.0,  0.0,  B  ,  0.0)
+            Vec4::new(0.0,  0.0,  A  ,  B),
+            Vec4::new(0.0,  0.0, -1.0,  0.0)
         );
 
-        return proj;
+        return Mat4::transpose(proj);
     }
 
 
@@ -187,17 +214,16 @@ impl Camera {
         let u: Vec3 = -Vec3::norm(Vec3::cross(f, r));
         let b: Vec3 = -f;
 
-        let disp = Vec3::new(-Vec3::dot(r,pos), -Vec3::dot(u,pos), -Vec3::dot(b,pos)); // Explain
-
+        let disp = Vec3::new(-Vec3::dot(r,pos), -Vec3::dot(u,pos), -Vec3::dot(b,pos));
 
         let view = Mat4::new(
-            Vec4::new(r.x, u.x, b.x, 0.0),
-            Vec4::new(r.y, u.y, b.y, 0.0),
-            Vec4::new(r.z, u.z, b.z, 0.0),
-            Vec4::new(disp.x, disp.y, disp.z, 1.0)
+            Vec4::new(r.x, r.y, r.z, disp.x),
+            Vec4::new(u.x, u.y, u.z, disp.y),
+            Vec4::new(b.x, b.y, b.z, disp.z),
+            Vec4::new(0.0, 0.0, 0.0, 1.0)
         );
 
-        return view;
+        return Mat4::transpose(view);
     }
 
 

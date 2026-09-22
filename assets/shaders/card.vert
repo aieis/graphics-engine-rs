@@ -24,11 +24,11 @@ void main() {
 
     float FOV   = PI / 3;
 
-    mat4 view = create_view_matrix(G.CamPos, G.CamDir, G.CamUp);
+    mat4 view = G.View; //create_view_matrix(G.CamPos, G.CamDir, G.CamUp);
 
     vec4 world_pos = view * vec4(pos, 1.0);
 
-    mat4 proj = create_projection_matrix(FOV, P.Aspect);
+    mat4 proj = G.Projection; //create_projection_matrix(FOV, P.Aspect);
     vec4 proj_pos = proj * world_pos;
 
     gl_Position = proj_pos;
