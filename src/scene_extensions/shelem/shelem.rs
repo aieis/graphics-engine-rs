@@ -9,7 +9,7 @@ use crate::drawable::{drawable_card::DrawableCard, drawable_text::DrawableText};
 use crate::geometry::vec3::Vec3;
 use crate::primitives::image::PixelFormat;
 use crate::mesh::prism;
-use crate::utils::colours::METAL_GREY;
+use crate::utils::colours;
 use crate::rhi::{allocator::Allocator, uniform::StaticUniform, uniform::VariableUniform};
 use crate::scene::camera::{Camera, CameraParams, CameraAction};
 use crate::shader::{ShaderText, ShaderCard};
@@ -47,7 +47,6 @@ struct SharedFontData {
 pub struct ShelemScene
 {
     cards : Vec<DrawableCard>,
-    time  : Instant,
 	frame_timer: [DrawableText; 1],
 
     global_descriptor_set: Vec<vk::DescriptorSet>,
@@ -59,6 +58,9 @@ pub struct ShelemScene
 
     window_size: (u32, u32),
     cursor_delta: (f64, f64),
+    fixed_camera: bool,
+
+    selected_card: Option<usize>,
 
     speed: f32,
 	previous_time: Instant,
@@ -67,8 +69,6 @@ pub struct ShelemScene
 impl ShelemScene
 {
     pub fn new(base: &VkBase, allocator: &mut Allocator) -> Self {
-
-        let time = Instant::now();
 
         let font_atlas = FontAtlas::parse_atlas_from_memory(FONT_ATLAS_DESC_DATA, FONT_ATLAS_DATA).expect("Failed to load atlas.");
         let font_atlas_texture = crate::utils::image::create_texture_image(&base.device, font_atlas.atlas.w, font_atlas.atlas.h, (font_atlas.atlas.w * font_atlas.atlas.h * 4) as u64, PixelFormat::RGBA);
@@ -99,15 +99,14 @@ impl ShelemScene
 
         let mut cards = Vec::new();
         for i in 0..N as usize {
-            cards.push(DrawableCard::new(allocator, prism::make_prism(Vec3::new(S + D * i as f32, 0.0, -2.0), CARD_SIZE, METAL_GREY)));
-            cards.push(DrawableCard::new(allocator, prism::make_prism(Vec3::new(S + D * i as f32, 0.0,  2.0), CARD_SIZE, METAL_GREY)));
+            cards.push(DrawableCard::new(allocator, prism::make_prism(Vec3::new(S + D * i as f32, 0.0, -2.0), CARD_SIZE, colours::METAL_GREY)));
+            cards.push(DrawableCard::new(allocator, prism::make_prism(Vec3::new(S + D * i as f32, 0.0,  2.0), CARD_SIZE, colours::METAL_GREY)));
         }
 
 
         Self {
             cards,
 
-            time,
             frame_timer,
             global_descriptor_set,
 
@@ -119,6 +118,8 @@ impl ShelemScene
             window_size,
             speed: CAMERA_MOVEMENT_SPEED,
             cursor_delta: (0.0, 0.0),
+            fixed_camera: true,
+            selected_card: None,
             previous_time: Instant::now(),
         }
     }
@@ -177,10 +178,42 @@ impl ShelemScene
             return;
         }
 
+        match key {
+
+            KeyCode::ArrowLeft => {
+                self.select_previous_card();
+            }
+
+            KeyCode::ArrowRight => {
+                self.select_next_card();
+            }
+
+
+            _ => {
+
+            }
+        }
+
+        // Decide if to skp all the camera options or not
+        if self.fixed_camera {
+
+            if keyboard_state.is_mod_req_met(KeyMod::None) && key == KeyCode::KeyO {
+                self.fixed_camera = false;
+            }
+
+            return;
+        }
 
         if keyboard_state.is_mod_req_met(KeyMod::None) {
             match key {
                 KeyCode::KeyO => {
+
+                    if self.fixed_camera {
+                        self.fixed_camera = false;
+                    } else {
+                        self.fixed_camera = true;
+                        self.reset_camera();
+                    }
 
                 }
 
@@ -225,6 +258,13 @@ impl ShelemScene
     }
 
     fn handle_down_keys(&mut self, keyboard_state: &KeyboardMouseState, delta_time: f32) {
+
+        // camera
+
+        if self.fixed_camera {
+            return;
+        }
+
 
         if keyboard_state.is_mod_req_met(KeyMod::None) {
             if keyboard_state[KeyCode::KeyA] {
@@ -311,6 +351,47 @@ impl ShelemScene
 
         DrawableCard::draw(&base.device, cb, &base.graphics_pipelines[ShaderCard::ID], &self.cards);
         DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.frame_timer);
+    }
+
+
+    fn select_previous_card(&mut self) {
+
+        if let Some(idx) = self.selected_card {
+            self.unselect_card();
+            if idx > 0 {
+                let n_idx = idx - 1;
+                self.selected_card = Some(n_idx);
+                self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+            }
+        } else {
+            let n_idx = self.cards.len() - 1;
+            self.selected_card = Some(n_idx);
+            self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+        }
+
+    }
+
+    fn select_next_card(&mut self) {
+        if let Some(idx) = self.selected_card {
+            self.unselect_card();
+            if idx < self.cards.len() - 1 {
+                let n_idx = idx + 1;
+                self.selected_card = Some(n_idx);
+                self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+            }
+        } else {
+            let n_idx = 0;
+            self.selected_card = Some(n_idx);
+            self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+        }
+
+    }
+
+    fn unselect_card(&mut self) {
+        if let Some(idx) = self.selected_card {
+            self.cards[idx].mesh.set_colour(colours::METAL_GREY);
+            self.selected_card = None;
+        }
     }
 
     pub fn release(&mut self, base: &VkBase) {
