@@ -34,10 +34,7 @@ use ash::vk;
 use vk_base::VkBase;
 
 use winit::{
-    event::{DeviceEvent, DeviceId, ElementState, Event, KeyEvent, MouseButton, WindowEvent},
-    event_loop::EventLoop,
-    keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowBuilder},
+    dpi::PhysicalSize, event::{DeviceEvent, DeviceId, ElementState, Event, KeyEvent, MouseButton, WindowEvent}, event_loop::EventLoop, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowBuilder}
 };
 
 
@@ -166,8 +163,7 @@ impl App {
             }
 
             TargetScene::Shelem => {
-                let w = self.base.window.inner_size();
-                self.shelem_scene.update(&self.base, cb, (w.width, w.height), &self.keyboard_state, self.delta_time);
+                self.shelem_scene.update(&self.base, cb, &self.keyboard_state, self.delta_time);
             }
 
             TargetScene::Empty => {
@@ -267,7 +263,8 @@ impl App {
                 self.render();
             }
 
-            WindowEvent::Resized(_) => {
+            WindowEvent::Resized(window_size) => {
+                self.handle_resize_event(window_size);
                 self.base.window.request_redraw();
             }
 
@@ -283,6 +280,20 @@ impl App {
 
             }
         }
+    }
+
+    fn handle_resize_event(&mut self, window_size: PhysicalSize<u32>) {
+        match self.target_scene {
+            TargetScene::Shelem => {
+                self.shelem_scene.handle_resize_event((window_size.width, window_size.height));
+            },
+
+
+            _ => {
+                // noting to do
+            },
+        };
+
     }
 
     fn handle_mouse_button_event(&mut self, state: ElementState, button: MouseButton) {

@@ -67,7 +67,7 @@ impl Camera {
         let up = Vec3::Y;
 
         let view = Self::create_view_matrix(location, direction, up);
-        let projection = Self::create_projection_matrix(fov, if height <= 0.0 { width / height } else { 1.0 }) ;
+        let projection = Self::create_projection_matrix(fov, if height > 0.0 { width / height } else { 1.0 }) ;
 
 
         let params = CameraParams {
@@ -162,7 +162,15 @@ impl Camera {
         }
 
         self.params.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
-        self.params.projection = Self::create_projection_matrix(self.fov, if self.height <= 0.0 { self.width / self.height } else { 1.0 });
+        self.params.projection = Self::create_projection_matrix(self.fov, if self.height > 0.0 { self.width / self.height } else { 1.0 });
+    }
+
+    pub fn on_view_proj_changes(&mut self, width: f32, height: f32, fov: f32) {
+        self.fov = fov;
+        self.width = width;
+        self.height = height;
+        self.params.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
+        self.params.projection = Self::create_projection_matrix(self.fov, if self.height > 0.0 { self.width / self.height } else { 1.0 });
     }
 
     fn calc_direction(x_sin: f32, x_cos: f32, y_sin: f32, y_cos: f32) -> Vec3 {

@@ -58,9 +58,9 @@ pub struct ShelemScene
     font_data: SharedFontData,
 
     window_size: (u32, u32),
+    cursor_delta: (f64, f64),
 
     speed: f32,
-    cursor_delta: (f64, f64),
 	previous_time: Instant,
 }
 
@@ -180,6 +180,10 @@ impl ShelemScene
 
         if keyboard_state.is_mod_req_met(KeyMod::None) {
             match key {
+                KeyCode::KeyO => {
+
+                }
+
                 KeyCode::KeyT => {
                     self.reset_camera();
                 }
@@ -266,6 +270,10 @@ impl ShelemScene
 
     }
 
+    pub fn handle_resize_event(&mut self, window_size: (u32, u32)) {
+        self.window_size = window_size;
+        self.camera.on_view_proj_changes(self.window_size.0 as f32, self.window_size.1 as f32, CAMERA_FOV);
+    }
 
     fn reset_camera(&mut self) {
         self.camera = Self::make_camera(self.window_size.0 as f32, self.window_size.1 as f32, CAMERA_FOV);
@@ -275,10 +283,8 @@ impl ShelemScene
         return Camera::new(CAMERA_LOCATION, CAMERA_DIRECTION_X, CAMERA_DIRECTION_Y, width, height, fov);
     }
 
-    pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, window_size: (u32, u32), keyboard_state: &KeyboardMouseState, delta_time: f32) {
-
-        self.window_size = window_size;
-        let aspect_ratio = window_size.0 as f32 / window_size.1 as f32;
+    pub fn update(&mut self, base: &VkBase, cb: vk::CommandBuffer, keyboard_state: &KeyboardMouseState, delta_time: f32) {
+        let aspect_ratio = self.window_size.0 as f32 / self.window_size.1 as f32;
         self.handle_down_keys(keyboard_state, delta_time);
         self.camera_buffer.update(&base.device, cb, &self.camera.params);
 
