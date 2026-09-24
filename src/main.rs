@@ -34,7 +34,7 @@ use ash::vk;
 use vk_base::VkBase;
 
 use winit::{
-    dpi::PhysicalSize, event::{DeviceEvent, DeviceId, ElementState, Event, KeyEvent, MouseButton, WindowEvent}, event_loop::EventLoop, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowBuilder}
+    dpi::{PhysicalPosition, PhysicalSize}, event::{DeviceEvent, DeviceId, ElementState, Event, KeyEvent, MouseButton, WindowEvent}, event_loop::EventLoop, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowBuilder}
 };
 
 
@@ -276,10 +276,27 @@ impl App {
                 self.handle_mouse_button_event(state, button);
             }
 
+            WindowEvent::CursorMoved { device_id: _, position } => {
+                self.handle_cursor_moved(position);
+            }
+
             _ => {
 
             }
         }
+    }
+
+    fn handle_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
+        match self.target_scene {
+            TargetScene::Shelem => {
+                self.shelem_scene.handle_cursor_moved((position.x, position.y));
+            },
+
+
+            _ => {
+                // noting to do
+            },
+        };
     }
 
     fn handle_resize_event(&mut self, window_size: PhysicalSize<u32>) {

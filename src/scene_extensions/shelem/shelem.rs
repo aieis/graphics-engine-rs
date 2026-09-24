@@ -58,7 +58,10 @@ pub struct ShelemScene
 
     window_size: (u32, u32),
     cursor_delta: (f64, f64),
+    cursor_position: (f64, f64),
+    cursor_moved: bool,
     fixed_camera: bool,
+
 
     selected_card: Option<usize>,
 
@@ -118,6 +121,8 @@ impl ShelemScene
             window_size,
             speed: CAMERA_MOVEMENT_SPEED,
             cursor_delta: (0.0, 0.0),
+            cursor_position: (0.0, 0.0),
+            cursor_moved: false,
             fixed_camera: true,
             selected_card: None,
             previous_time: Instant::now(),
@@ -140,6 +145,11 @@ impl ShelemScene
         crate::utils::image::transition_image_layout::<ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal>(&base.device, cb, &self.font_data.atlas_texture);
         crate::utils::image::copy_buffer_to_image(&base.device, cb, &self.font_data.atlas_texture, &self.font_data.atlas_texture.staging, self.font_data.atlas.atlas.w, self.font_data.atlas.atlas.h);
         crate::utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
+    }
+
+    pub fn handle_cursor_moved(&mut self, position: (f64, f64)) {
+        self.cursor_position = position;
+        self.cursor_moved = true;
     }
 
     pub fn handle_mouse_button_event(&mut self, state: ElementState, button: MouseButton) {
@@ -328,6 +338,24 @@ impl ShelemScene
         self.handle_down_keys(keyboard_state, delta_time);
         self.camera_buffer.update(&base.device, cb, &self.camera.params);
 
+        if self.cursor_moved {
+
+            if let Some(idx) = self.find_item_under_cursor() {
+                if let Some(prev_idx) = self.selected_card {
+                    if idx != prev_idx {
+                        self.unselect_card();
+                        self.select_card(idx);
+                    }
+                } else {
+                    self.select_card(idx);
+                }
+            } else {
+                self.unselect_card();
+            }
+
+            self.cursor_moved = false;
+        }
+
 		let frame_time_ms = self.previous_time.elapsed().as_millis();
 		let frame_time = format!("{:>12} ", frame_time_ms);
 		self.frame_timer[0].set_text(&frame_time);
@@ -359,14 +387,10 @@ impl ShelemScene
         if let Some(idx) = self.selected_card {
             self.unselect_card();
             if idx > 0 {
-                let n_idx = idx - 1;
-                self.selected_card = Some(n_idx);
-                self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+                self.select_card(idx - 1);
             }
         } else {
-            let n_idx = self.cards.len() - 1;
-            self.selected_card = Some(n_idx);
-            self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+            self.select_card(self.cards.len() - 1);
         }
 
     }
@@ -375,16 +399,17 @@ impl ShelemScene
         if let Some(idx) = self.selected_card {
             self.unselect_card();
             if idx < self.cards.len() - 1 {
-                let n_idx = idx + 1;
-                self.selected_card = Some(n_idx);
-                self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+                self.select_card(idx + 1);
             }
         } else {
-            let n_idx = 0;
-            self.selected_card = Some(n_idx);
-            self.cards[n_idx].mesh.set_colour(colours::VIOLET);
+            self.select_card(0);
         }
 
+    }
+
+    fn select_card(&mut self, idx: usize) {
+        self.selected_card = Some(idx);
+        self.cards[idx].mesh.set_colour(colours::VIOLET);
     }
 
     fn unselect_card(&mut self) {
@@ -392,6 +417,10 @@ impl ShelemScene
             self.cards[idx].mesh.set_colour(colours::METAL_GREY);
             self.selected_card = None;
         }
+    }
+
+    pub fn find_item_under_cursor(&self) -> Option<usize> {
+        None
     }
 
     pub fn release(&mut self, base: &VkBase) {

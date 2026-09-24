@@ -49,8 +49,7 @@ pub struct Camera {
 
     width: f32,
     height: f32,
-    fov: f32
-
+    fov: f32,
 }
 
 impl Camera {
@@ -171,6 +170,14 @@ impl Camera {
         self.height = height;
         self.params.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
         self.params.projection = Self::create_projection_matrix(self.fov, if self.height > 0.0 { self.width / self.height } else { 1.0 });
+    }
+
+    pub fn deproject_from_screen_position(&mut self, pos: (f32, f32)) -> Vec3 {
+
+
+        Vec3::X
+
+
     }
 
     fn calc_direction(x_sin: f32, x_cos: f32, y_sin: f32, y_cos: f32) -> Vec3 {

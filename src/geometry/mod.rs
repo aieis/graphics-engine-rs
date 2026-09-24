@@ -2,6 +2,7 @@ pub mod vec3;
 pub mod vec4;
 pub mod mat4;
 
+pub mod intersections;
 
 pub use vec3::*;
 pub use vec4::*;
