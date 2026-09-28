@@ -4,3 +4,4 @@ pub mod drawable_common;
 pub mod drawable_mesh;
 pub mod drawable_text;
 pub mod drawable_card;
+pub mod drawable_light_column;

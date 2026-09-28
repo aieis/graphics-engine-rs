@@ -188,6 +188,40 @@ impl ShaderCard  {
     }
 }
 
+#[allow(nonstandard_style)]
+pub struct ShaderLightColumn_Params {
+    pub point_a: Vec3,
+    pub point_b: Vec3,
+    pub colour: Vec3,
+}
+
+#[register_shader("light_column")]
+pub struct ShaderLightColumn { }
+
+impl ShaderLightColumn  {
+    const GLOBAL_UNIFORMS: bool = true;
+
+    pub fn pipeline_descriptor() -> PipelineDescriptor {
+        let ubo_layout_bindings = vec![];
+        let vertex_bindings     = vec![];
+        let vertex_attributes   = vec![];
+
+        let push_constants = Some(
+            vk::PushConstantRange::default()
+                .stage_flags(vk::ShaderStageFlags::VERTEX)
+                .offset(0)
+                .size(std::mem::size_of::<ShaderLightColumn_Params>() as u32)
+        );
+
+        PipelineDescriptor {
+            ubo_layout_bindings,
+            vertex_bindings,
+            vertex_attributes,
+	        push_constants,
+        }
+    }
+}
+
 
 #[register_shader("triangle")]
 pub struct ShaderRect {}

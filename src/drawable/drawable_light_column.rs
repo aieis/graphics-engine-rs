@@ -37,7 +37,4 @@ impl DrawableLightColumn {
         }
     }
 
-    pub fn release(_device: &DeviceBundle, _mesh_bundles: &mut [Self]) {
-
-    }
 }

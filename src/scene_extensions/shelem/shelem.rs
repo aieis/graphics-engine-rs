@@ -5,6 +5,7 @@ use stb_truetype::{FontAtlas, CHARS_LEN};
 use winit::event::{ElementState, MouseButton};
 use winit::keyboard::KeyCode;
 
+use crate::drawable::drawable_light_column::DrawableLightColumn;
 use crate::drawable::{drawable_card::DrawableCard, drawable_text::DrawableText};
 use crate::geometry::vec3::Vec3;
 use crate::primitives::image::PixelFormat;
@@ -12,7 +13,7 @@ use crate::mesh::prism;
 use crate::utils::colours;
 use crate::rhi::{allocator::Allocator, uniform::StaticUniform, uniform::VariableUniform};
 use crate::scene::camera::{Camera, CameraParams, CameraAction};
-use crate::shader::{ShaderText, ShaderCard};
+use crate::shader::{ShaderCard, ShaderLightColumn, ShaderText};
 use crate::utils::{
     image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined},
     keyboard_mouse::{KeyboardMouseState, KeyMod}
@@ -379,6 +380,19 @@ impl ShelemScene
 
         DrawableCard::draw(&base.device, cb, &base.graphics_pipelines[ShaderCard::ID], &self.cards);
         DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.frame_timer);
+
+        let pso = &base.graphics_pipelines[ShaderLightColumn::ID];
+
+        unsafe {
+            base.device.logical.cmd_bind_pipeline(cb, vk::PipelineBindPoint::GRAPHICS, pso.graphics);
+        }
+
+        unsafe {
+            base.device.logical.cmd_bind_descriptor_sets(cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0, &[self.global_descriptor_set[current_image]], &[]);
+        }
+
+        let light_columns = [DrawableLightColumn::new()];
+        DrawableLightColumn::draw(&base.device, cb, &base.graphics_pipelines[ShaderLightColumn::ID], &light_columns);
     }
 
 
