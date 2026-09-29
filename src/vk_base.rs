@@ -643,7 +643,7 @@ impl VkBase {
             .scissors(&scissors);
 
         let rasterization_info = vk::PipelineRasterizationStateCreateInfo::default()
-            .cull_mode(vk::CullModeFlags::BACK)
+            .cull_mode(pipeline_desc.cull_mode)
             .front_face(vk::FrontFace::CLOCKWISE)
             .polygon_mode(vk::PolygonMode::FILL)
             .depth_clamp_enable(false)

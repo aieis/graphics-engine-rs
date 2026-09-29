@@ -58,6 +58,7 @@ impl ShaderMesh  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            cull_mode: vk::CullModeFlags::BACK,
         }
     }
 }
@@ -117,6 +118,7 @@ impl ShaderSpecialMesh  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            cull_mode: vk::CullModeFlags::BACK,
         }
     }
 }
@@ -184,6 +186,7 @@ impl ShaderCard  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants,
+            cull_mode: vk::CullModeFlags::BACK,
         }
     }
 }
@@ -218,6 +221,7 @@ impl ShaderLightColumn  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants,
+            cull_mode: vk::CullModeFlags::NONE,
         }
     }
 }
@@ -258,6 +262,7 @@ impl ShaderRect {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            cull_mode: vk::CullModeFlags::BACK,
         }
     }
 }
@@ -306,6 +311,7 @@ impl ShaderTexture {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            cull_mode: vk::CullModeFlags::BACK,
         }
     }
 }
@@ -363,6 +369,7 @@ impl ShaderText {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            cull_mode: vk::CullModeFlags::BACK,
         }
     }
 }

@@ -10,8 +10,8 @@ pub struct DrawableLightColumn {
     pub params: ShaderLightColumn_Params,
 }
 
-const SEGMENT_COUNT: usize = 8;
-const TRI_COUNT: usize = SEGMENT_COUNT * 2 + 2;
+const SEGMENT_COUNT: usize = 32;
+const TRI_COUNT: usize = SEGMENT_COUNT * 2 + 2 + 2;
 impl DrawableLightColumn {
 
     pub fn new() -> Self {
