@@ -28,9 +28,9 @@ macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../../assets/fonts/Atlas_Ios
 const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
 const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
-const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 5.0, 1.0);
+const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 2.0, 5.0);
 const CAMERA_DIRECTION_X : f32  = -std::f32::consts::PI / 2.0;
-const CAMERA_DIRECTION_Y : f32  = -std::f32::consts::PI / 8.0 * 3.0;
+const CAMERA_DIRECTION_Y : f32  = -std::f32::consts::PI / 8.0 * 1.5;
 const CAMERA_FOV         : f32  = std::f32::consts::PI / 3.0;
 
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
@@ -48,7 +48,8 @@ struct SharedFontData {
 pub struct ShelemScene
 {
     cards : Vec<DrawableCard>,
-	frame_timer: [DrawableText; 1],
+    light_columns: [DrawableLightColumn; 1],
+	text_widgets: [DrawableText; 2],
 
     global_descriptor_set: Vec<vk::DescriptorSet>,
 
@@ -59,10 +60,9 @@ pub struct ShelemScene
 
     window_size: (u32, u32),
     cursor_delta: (f64, f64),
-    cursor_position: (f64, f64),
+    cursor_position: (f32, f32),
     cursor_moved: bool,
     fixed_camera: bool,
-
 
     selected_card: Option<usize>,
 
@@ -76,7 +76,10 @@ impl ShelemScene
 
         let font_atlas = FontAtlas::parse_atlas_from_memory(FONT_ATLAS_DESC_DATA, FONT_ATLAS_DATA).expect("Failed to load atlas.");
         let font_atlas_texture = crate::utils::image::create_texture_image(&base.device, font_atlas.atlas.w, font_atlas.atlas.h, (font_atlas.atlas.w * font_atlas.atlas.h * 4) as u64, PixelFormat::RGBA);
-        let frame_timer = [DrawableText::new(base, Vec3::new(-1.0, -0.95, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64)];
+        let text_widgets = [
+            DrawableText::new(base, Vec3::new(-1.0, -0.95, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64),
+            DrawableText::new(base, Vec3::new(-1.0, -0.85, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64)
+        ];
 
         let font_data = SharedFontData {
             atlas: font_atlas,
@@ -84,7 +87,7 @@ impl ShelemScene
             glyph_buffer: VariableUniform::new(allocator, CHARS_LEN as u64 * std::mem::size_of::<u32>() as u64 * 2)
         };
 
-        DrawableText::init_font_atlas(&base.device, &font_data.atlas_texture, &font_data.glyph_buffer.uniform, &frame_timer);
+        DrawableText::init_font_atlas(&base.device, &font_data.atlas_texture, &font_data.glyph_buffer.uniform, &text_widgets);
 
         let window_size = (512, 512);
         let camera = Self::make_camera(window_size.0 as f32, window_size.1 as f32, CAMERA_FOV);
@@ -108,10 +111,13 @@ impl ShelemScene
         }
 
 
+        let light_columns = [DrawableLightColumn::new()];
+
         Self {
             cards,
 
-            frame_timer,
+            light_columns,
+            text_widgets,
             global_descriptor_set,
 
             font_data,
@@ -149,7 +155,7 @@ impl ShelemScene
     }
 
     pub fn handle_cursor_moved(&mut self, position: (f64, f64)) {
-        self.cursor_position = position;
+        self.cursor_position = (position.0 as f32, position.1 as f32);
         self.cursor_moved = true;
     }
 
@@ -359,12 +365,12 @@ impl ShelemScene
 
 		let frame_time_ms = self.previous_time.elapsed().as_millis();
 		let frame_time = format!("{:>12} ", frame_time_ms);
-		self.frame_timer[0].set_text(&frame_time);
-		self.frame_timer[0].kern_text(&self.font_data.atlas);
+		self.text_widgets[0].set_text(&frame_time);
+		self.text_widgets[0].kern_text(&self.font_data.atlas);
 		self.previous_time = Instant::now();
 
         DrawableCard::update(&base.device, cb, &mut self.cards);
-		DrawableText::update(&base.device, cb, &mut self.frame_timer, 1024.0, aspect_ratio);
+		DrawableText::update(&base.device, cb, &mut self.text_widgets, 1024.0, aspect_ratio);
     }
 
     pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize) {
@@ -379,7 +385,7 @@ impl ShelemScene
         }
 
         DrawableCard::draw(&base.device, cb, &base.graphics_pipelines[ShaderCard::ID], &self.cards);
-        DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.frame_timer);
+        DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.text_widgets);
 
         let pso = &base.graphics_pipelines[ShaderLightColumn::ID];
 
@@ -391,8 +397,7 @@ impl ShelemScene
             base.device.logical.cmd_bind_descriptor_sets(cb, vk::PipelineBindPoint::GRAPHICS, pso.layout, 0, &[self.global_descriptor_set[current_image]], &[]);
         }
 
-        let light_columns = [DrawableLightColumn::new()];
-        DrawableLightColumn::draw(&base.device, cb, &base.graphics_pipelines[ShaderLightColumn::ID], &light_columns);
+        DrawableLightColumn::draw(&base.device, cb, &base.graphics_pipelines[ShaderLightColumn::ID], &self.light_columns);
     }
 
 
@@ -433,13 +438,23 @@ impl ShelemScene
         }
     }
 
-    pub fn find_item_under_cursor(&self) -> Option<usize> {
+    pub fn find_item_under_cursor(&mut self) -> Option<usize> {
+
+        if self.fixed_camera {
+            let v = self.camera.deproject_from_screen_position(self.cursor_position);
+            self.light_columns[0].params.point_b = self.camera.params.location;
+            self.light_columns[0].params.point_a = v * 0.1 + self.camera.params.location;
+
+            self.text_widgets[1].set_text(&format!("{:?} => {}", self.cursor_position, v));
+            self.text_widgets[1].kern_text(&self.font_data.atlas);
+        }
+
         None
     }
 
     pub fn release(&mut self, base: &VkBase) {
 
-        DrawableText::release(&base.device, &mut self.frame_timer);
+        DrawableText::release(&base.device, &mut self.text_widgets);
         DrawableCard::release(&base.device, &mut self.cards);
 
         unsafe {

@@ -15,6 +15,7 @@ pub enum CameraAction {
     SnapPosY,
 }
 
+/// Matrices in this struct are column matrices
 #[repr(C, align(16))]
 pub struct CameraParams {
     pub location: Vec3,
@@ -25,6 +26,9 @@ pub struct CameraParams {
 }
 
 const UP: Vec3 = Vec3::Y;
+
+const N: f32 = 0.1;
+const F: f32 = 50.0;
 
 #[allow(non_upper_case_globals)]
 const  PIx2        : f32 = std::f32::consts::PI * 2.0;
@@ -50,6 +54,9 @@ pub struct Camera {
     width: f32,
     height: f32,
     fov: f32,
+
+    // Row matrix
+    inverse_view: Mat4
 }
 
 impl Camera {
@@ -67,6 +74,9 @@ impl Camera {
 
         let view = Self::create_view_matrix(location, direction, up);
         let projection = Self::create_projection_matrix(fov, if height > 0.0 { width / height } else { 1.0 }) ;
+
+        // Row-matrix
+        let inverse_view = Mat4::transpose(Self::create_view_matrix(-location, -direction, up));
 
 
         let params = CameraParams {
@@ -98,6 +108,8 @@ impl Camera {
             width,
             height,
             fov,
+
+            inverse_view,
         }
     }
 
@@ -161,23 +173,31 @@ impl Camera {
         }
 
         self.params.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
-        self.params.projection = Self::create_projection_matrix(self.fov, if self.height > 0.0 { self.width / self.height } else { 1.0 });
+
+        self.inverse_view = Mat4::transpose(Self::create_view_matrix(-self.params.location, -self.params.direction, self.params.up));
     }
 
     pub fn on_view_proj_changes(&mut self, width: f32, height: f32, fov: f32) {
         self.fov = fov;
         self.width = width;
         self.height = height;
-        self.params.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
         self.params.projection = Self::create_projection_matrix(self.fov, if self.height > 0.0 { self.width / self.height } else { 1.0 });
     }
 
-    pub fn deproject_from_screen_position(&mut self, pos: (f32, f32)) -> Vec3 {
+    pub fn deproject_from_screen_position(&self, pos: (f32, f32)) -> Vec3 {
+
+        let x_p = (pos.0 / self.width) * 2.0 - 1.0;
+        let y_p = (pos.1 / self.height) * 2.0 - 1.0;
+
+        let z = 1.0;
+        let x = x_p / self.params.projection.x.x * z;
+        let y = y_p / self.params.projection.y.y * z;
 
 
-        Vec3::X
+        let v = Vec4::new(x, y, z, 1.0);
+        // let v = self.inverse_view.mul_vec(v);
 
-
+        Vec3::new(v.x, v.y, v.z)
     }
 
     fn calc_direction(x_sin: f32, x_cos: f32, y_sin: f32, y_cos: f32) -> Vec3 {
@@ -189,8 +209,6 @@ impl Camera {
     }
 
     fn create_projection_matrix(fov: f32, aspect: f32) -> Mat4 {
-        let F: f32 = 50.0;
-        let N: f32 = 0.1;
         let C: f32 = 1.0 / (fov/2.0).tan();
 
         let X: f32 = C / aspect;

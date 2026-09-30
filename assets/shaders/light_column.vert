@@ -75,6 +75,7 @@ void main() {
 
     vec4  pos  = vec4(0, 0, 0, 1.0);
     float dist = 1.0;
+    vec3 colour = P.Colour;
     if (v <= N * 3) {
         // Circle 1
         int tri_idx   = (v / 3);
@@ -89,6 +90,7 @@ void main() {
         }
 
         pos = fake_view_matrix * vec4(v_pos, 1.0);
+        pos.y *= -1;
 
         dist = length(v_pos) / Radius;
 
@@ -107,7 +109,10 @@ void main() {
         }
 
         pos = fake_view_matrix * vec4(v_pos, 1.0);
+        pos.y *= -1;
         dist = length(v_pos) / Radius;
+
+        colour = vec3(1.0, 0.0, 0.0);
 
 
     } else {
@@ -133,5 +138,5 @@ void main() {
     vec4 world_pos = G.View * pos;
     vec4 proj_pos = G.Projection * world_pos;
     gl_Position = proj_pos;
-    frag_color  = (1.0 - dist) * P.Colour;
+    frag_color  = (1.0 - dist) * colour;
 }
