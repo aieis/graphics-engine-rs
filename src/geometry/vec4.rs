@@ -1,4 +1,5 @@
 use std::{ops, fmt};
+use super::Vec3;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C, align(16))]
@@ -34,7 +35,9 @@ impl Vec4 {
         (self.x*self.x + self.y*self.y + self.z*self.z + self.w*self.w).sqrt()
     }
 
-
+    pub fn xyz(&self) -> Vec3 {
+        Vec3::new(self.x, self.y, self.z)
+    }
 
     pub fn norm(v: &Vec4) -> Vec4 {
         let l = v.length();

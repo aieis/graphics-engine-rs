@@ -84,15 +84,11 @@ void main() {
         bool rotate = true;
         vec3 v_pos = get_v_pos_circle_offset(tri_idx, tri_v_idx, rotate);
 
-        mat4 fake_view_matrix = mat4(1.0);
-        if (1.0 - abs(dot(line_axis, UP)) > 1.0e-3) {
-            fake_view_matrix = create_view_matrix(P.PointA, line_axis, UP);
-        }
-
-        pos = fake_view_matrix * vec4(v_pos, 1.0);
-        pos.y *= -1;
+        pos = vec4(v_pos + P.PointA, 1.0);
 
         dist = length(v_pos) / Radius;
+
+        colour = vec3(0.0, 1.0, 0.0);
 
     } else if (v <= (N * 2) * 3 ) {
         // Circle 2
@@ -103,13 +99,7 @@ void main() {
         bool rotate = true;
         vec3 v_pos = get_v_pos_circle_offset(tri_idx, tri_v_idx, rotate);
 
-        mat4 fake_view_matrix = mat4(1.0);
-        if (1.0 - abs(dot(line_axis, UP)) > 1.0e-3) {
-            fake_view_matrix = create_view_matrix(P.PointB, -line_axis, UP);
-        }
-
-        pos = fake_view_matrix * vec4(v_pos, 1.0);
-        pos.y *= -1;
+        pos = vec4(v_pos + P.PointB, 1.0);
         dist = length(v_pos) / Radius;
 
         colour = vec3(1.0, 0.0, 0.0);

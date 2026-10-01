@@ -30,7 +30,7 @@ const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
 const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 2.0, 5.0);
 const CAMERA_DIRECTION_X : f32  = -std::f32::consts::PI / 2.0;
-const CAMERA_DIRECTION_Y : f32  = -std::f32::consts::PI / 8.0 * 1.5;
+const CAMERA_DIRECTION_Y : f32  = 0.0; //-std::f32::consts::PI / 8.0 * 1.5;
 const CAMERA_FOV         : f32  = std::f32::consts::PI / 3.0;
 
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
@@ -49,7 +49,7 @@ pub struct ShelemScene
 {
     cards : Vec<DrawableCard>,
     light_columns: [DrawableLightColumn; 1],
-	text_widgets: [DrawableText; 2],
+	text_widgets: [DrawableText; 3],
 
     global_descriptor_set: Vec<vk::DescriptorSet>,
 
@@ -78,7 +78,8 @@ impl ShelemScene
         let font_atlas_texture = crate::utils::image::create_texture_image(&base.device, font_atlas.atlas.w, font_atlas.atlas.h, (font_atlas.atlas.w * font_atlas.atlas.h * 4) as u64, PixelFormat::RGBA);
         let text_widgets = [
             DrawableText::new(base, Vec3::new(-1.0, -0.95, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64),
-            DrawableText::new(base, Vec3::new(-1.0, -0.85, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64)
+            DrawableText::new(base, Vec3::new(-1.0, -0.85, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64),
+            DrawableText::new(base, Vec3::new(-1.0, -0.75, 0.0), font_atlas.desc.info.clone(), allocator, "0000 ", 64),
         ];
 
         let font_data = SharedFontData {
@@ -385,7 +386,6 @@ impl ShelemScene
         }
 
         DrawableCard::draw(&base.device, cb, &base.graphics_pipelines[ShaderCard::ID], &self.cards);
-        DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.text_widgets);
 
         let pso = &base.graphics_pipelines[ShaderLightColumn::ID];
 
@@ -398,6 +398,11 @@ impl ShelemScene
         }
 
         DrawableLightColumn::draw(&base.device, cb, &base.graphics_pipelines[ShaderLightColumn::ID], &self.light_columns);
+
+
+
+        DrawableText::draw(&base.device, cb, &base.graphics_pipelines[ShaderText::ID], current_image, &self.text_widgets);
+
     }
 
 
@@ -442,11 +447,14 @@ impl ShelemScene
 
         if self.fixed_camera {
             let v = self.camera.deproject_from_screen_position(self.cursor_position);
-            self.light_columns[0].params.point_b = self.camera.params.location;
-            self.light_columns[0].params.point_a = v * 0.1 + self.camera.params.location;
+            self.light_columns[0].params.point_a = self.camera.params.location + self.camera.params.direction * 2.0;
+            self.light_columns[0].params.point_b = v * 3.0 + self.camera.params.location;
 
-            self.text_widgets[1].set_text(&format!("{:?} => {}", self.cursor_position, v));
+            self.text_widgets[1].set_text(&format!("({:>6.2}, {:>6.2}) => {}", self.cursor_position.0, self.cursor_position.1, v));
             self.text_widgets[1].kern_text(&self.font_data.atlas);
+            self.text_widgets[2].set_text(&format!("{} => {}", self.light_columns[0].params.point_a, self.light_columns[0].params.point_b));
+            self.text_widgets[2].kern_text(&self.font_data.atlas);
+
         }
 
         None

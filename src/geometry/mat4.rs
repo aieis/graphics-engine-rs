@@ -1,5 +1,6 @@
 use super::vec4::Vec4;
 
+#[derive(Clone, Copy, Debug)]
 #[repr(C, align(16))]
 pub struct Mat4 {
     pub x: Vec4,

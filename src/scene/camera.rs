@@ -56,7 +56,7 @@ pub struct Camera {
     fov: f32,
 
     // Row matrix
-    inverse_view: Mat4
+    view: Mat4
 }
 
 impl Camera {
@@ -73,17 +73,15 @@ impl Camera {
         let up = Vec3::Y;
 
         let view = Self::create_view_matrix(location, direction, up);
-        let projection = Self::create_projection_matrix(fov, if height > 0.0 { width / height } else { 1.0 }) ;
+        let projection = Self::create_projection_matrix_transposed(fov, if height > 0.0 { width / height } else { 1.0 }) ;
 
         // Row-matrix
-        let inverse_view = Mat4::transpose(Self::create_view_matrix(-location, -direction, up));
-
 
         let params = CameraParams {
             location,
             direction,
             up,
-            view,
+            view: Mat4::transpose(view),
             projection
         };
 
@@ -109,7 +107,7 @@ impl Camera {
             height,
             fov,
 
-            inverse_view,
+            view,
         }
     }
 
@@ -172,16 +170,16 @@ impl Camera {
             }
         }
 
-        self.params.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
+        self.view = Mat4::transpose(Self::create_view_matrix(-self.params.location, -self.params.direction, self.params.up));
+        self.params.view = Mat4::transpose(self.view);
 
-        self.inverse_view = Mat4::transpose(Self::create_view_matrix(-self.params.location, -self.params.direction, self.params.up));
     }
 
     pub fn on_view_proj_changes(&mut self, width: f32, height: f32, fov: f32) {
         self.fov = fov;
         self.width = width;
         self.height = height;
-        self.params.projection = Self::create_projection_matrix(self.fov, if self.height > 0.0 { self.width / self.height } else { 1.0 });
+        self.params.projection = Self::create_projection_matrix_transposed(self.fov, if self.height > 0.0 { self.width / self.height } else { 1.0 });
     }
 
     pub fn deproject_from_screen_position(&self, pos: (f32, f32)) -> Vec3 {
@@ -189,15 +187,14 @@ impl Camera {
         let x_p = (pos.0 / self.width) * 2.0 - 1.0;
         let y_p = (pos.1 / self.height) * 2.0 - 1.0;
 
-        let z = 1.0;
+        let z = N;
         let x = x_p / self.params.projection.x.x * z;
         let y = y_p / self.params.projection.y.y * z;
 
 
-        let v = Vec4::new(x, y, z, 1.0);
-        // let v = self.inverse_view.mul_vec(v);
+        let v = x * self.view.x.xyz() + y * self.view.y.xyz() + z * self.view.z.xyz();
 
-        Vec3::new(v.x, v.y, v.z)
+        Vec3::norm(Vec3::new(v.x, v.y, -v.z))
     }
 
     fn calc_direction(x_sin: f32, x_cos: f32, y_sin: f32, y_cos: f32) -> Vec3 {
@@ -208,7 +205,7 @@ impl Camera {
         Vec3::norm(Vec3::cross(direction, UP))
     }
 
-    fn create_projection_matrix(fov: f32, aspect: f32) -> Mat4 {
+    fn create_projection_matrix_transposed(fov: f32, aspect: f32) -> Mat4 {
         let C: f32 = 1.0 / (fov/2.0).tan();
 
         let X: f32 = C / aspect;
@@ -256,7 +253,7 @@ impl Camera {
             Vec4::new(0.0, 0.0, 0.0, 1.0)
         );
 
-        return Mat4::transpose(view);
+        return view;
     }
 
 
