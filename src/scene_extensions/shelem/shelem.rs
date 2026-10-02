@@ -30,7 +30,7 @@ const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
 
 const CAMERA_LOCATION    : Vec3 = Vec3::new(0.0, 2.0, 5.0);
 const CAMERA_DIRECTION_X : f32  = -std::f32::consts::PI / 2.0;
-const CAMERA_DIRECTION_Y : f32  = 0.0; //-std::f32::consts::PI / 8.0 * 1.5;
+const CAMERA_DIRECTION_Y : f32  = -std::f32::consts::PI / 8.0 * 1.5;
 const CAMERA_FOV         : f32  = std::f32::consts::PI / 3.0;
 
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
@@ -346,7 +346,8 @@ impl ShelemScene
         self.handle_down_keys(keyboard_state, delta_time);
         self.camera_buffer.update(&base.device, cb, &self.camera.params);
 
-        if self.cursor_moved {
+        // if self.cursor_moved
+        {
 
             if let Some(idx) = self.find_item_under_cursor() {
                 if let Some(prev_idx) = self.selected_card {
@@ -445,7 +446,8 @@ impl ShelemScene
 
     pub fn find_item_under_cursor(&mut self) -> Option<usize> {
 
-        if self.fixed_camera {
+        // if self.fixed_camera
+        {
             let v = self.camera.deproject_from_screen_position(self.cursor_position);
             self.light_columns[0].params.point_a = self.camera.params.location + self.camera.params.direction * 2.0;
             self.light_columns[0].params.point_b = v * 3.0 + self.camera.params.location;

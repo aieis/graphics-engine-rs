@@ -170,7 +170,7 @@ impl Camera {
             }
         }
 
-        self.view = Mat4::transpose(Self::create_view_matrix(-self.params.location, -self.params.direction, self.params.up));
+        self.view = Self::create_view_matrix(self.params.location, self.params.direction, self.params.up);
         self.params.view = Mat4::transpose(self.view);
 
     }
@@ -192,9 +192,9 @@ impl Camera {
         let y = y_p / self.params.projection.y.y * z;
 
 
-        let v = x * self.view.x.xyz() + y * self.view.y.xyz() + z * self.view.z.xyz();
+        let v = x * -self.view.x.xyz() + y * -self.view.y.xyz() + z * self.view.z.xyz();
 
-        Vec3::norm(Vec3::new(v.x, v.y, -v.z))
+        Vec3::norm(Vec3::new(-v.x, -v.y, -v.z))
     }
 
     fn calc_direction(x_sin: f32, x_cos: f32, y_sin: f32, y_cos: f32) -> Vec3 {
