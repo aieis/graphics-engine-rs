@@ -1,6 +1,7 @@
 use super::Vec3;
 
 /// Line values are a function of z
+#[derive(Copy, Clone)]
 pub struct Line {
     pub x_0: f32,
     pub y_0: f32,

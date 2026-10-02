@@ -17,7 +17,7 @@ layout(push_constant) uniform Params
 
 #define PI 3.141592653589793
 
-#define Radius 0.2
+#define Radius 0.05
 
 #define N 32
 

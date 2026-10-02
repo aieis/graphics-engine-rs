@@ -7,7 +7,11 @@ use winit::keyboard::KeyCode;
 
 use crate::drawable::drawable_light_column::DrawableLightColumn;
 use crate::drawable::{drawable_card::DrawableCard, drawable_text::DrawableText};
-use crate::geometry::vec3::Vec3;
+use crate::geometry::{
+    intersections::{self, Line, Sphere},
+    vec3::Vec3,
+};
+
 use crate::primitives::image::PixelFormat;
 use crate::mesh::prism;
 use crate::utils::colours;
@@ -346,7 +350,7 @@ impl ShelemScene
         self.handle_down_keys(keyboard_state, delta_time);
         self.camera_buffer.update(&base.device, cb, &self.camera.params);
 
-        // if self.cursor_moved
+        if self.cursor_moved
         {
 
             if let Some(idx) = self.find_item_under_cursor() {
@@ -446,7 +450,7 @@ impl ShelemScene
 
     pub fn find_item_under_cursor(&mut self) -> Option<usize> {
 
-        // if self.fixed_camera
+        if self.fixed_camera
         {
             let v = self.camera.deproject_from_screen_position(self.cursor_position);
             self.light_columns[0].params.point_a = self.camera.params.location + self.camera.params.direction * 2.0;
@@ -456,6 +460,28 @@ impl ShelemScene
             self.text_widgets[1].kern_text(&self.font_data.atlas);
             self.text_widgets[2].set_text(&format!("{} => {}", self.light_columns[0].params.point_a, self.light_columns[0].params.point_b));
             self.text_widgets[2].kern_text(&self.font_data.atlas);
+
+
+            let line = Line {
+                x_0: self.camera.params.location.x,
+                y_0: self.camera.params.location.y,
+                x_m: v.x / v.z,
+                y_m: v.y / v.z,
+            };
+
+            for idx in 0..self.cards.len() {
+                let center = self.cards[idx].mesh.center;
+                let sphere  = Sphere {
+                    center: Vec3::new(center.x, center.y, center.z - self.camera.params.location.z),
+                    radius: 1.0,
+                };
+
+                if intersections::does_line_intersect_sphere(line, sphere) {
+                    return Some(idx);
+                }
+
+            }
+
 
         }
 
