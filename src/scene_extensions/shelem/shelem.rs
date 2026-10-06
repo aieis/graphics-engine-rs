@@ -463,17 +463,15 @@ impl ShelemScene
 
 
             let line = Line {
-                x_0: self.camera.params.location.x,
-                y_0: self.camera.params.location.y,
-                x_m: v.x / v.z,
-                y_m: v.y / v.z,
+                b: self.camera.params.location.xy(),
+                m: v.xy() * (1.0 / v.z)
             };
 
             for idx in 0..self.cards.len() {
                 let center = self.cards[idx].mesh.center;
                 let sphere  = Sphere {
                     center: Vec3::new(center.x, center.y, center.z - self.camera.params.location.z),
-                    radius: 1.0,
+                    radius: CARD_SIZE.x/2.0,
                 };
 
                 if intersections::does_line_intersect_sphere(line, sphere) {

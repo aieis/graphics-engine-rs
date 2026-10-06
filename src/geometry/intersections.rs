@@ -1,17 +1,21 @@
-use super::Vec3;
+use super::{Vec3, Vec2};
 
 /// Line values are a function of z
 #[derive(Copy, Clone)]
 pub struct Line {
-    pub x_0: f32,
-    pub y_0: f32,
+    /// Initial at z = 0
+    pub b: Vec2,
 
-    /// Slope on of x as a function of z
-    pub x_m: f32,
-
-    /// Slope on of y as a function of z
-    pub y_m: f32
+    /// Slope as a function of z
+    pub m: Vec2
 }
+
+impl std::fmt::Display for Line {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "< Line {{ {} + {}z }} >", self.b, self.m)
+    }
+}
+
 
 
 pub struct Sphere {
@@ -19,66 +23,46 @@ pub struct Sphere {
     pub radius: f32
 }
 
-pub fn does_line_intersect_sphere(line: Line, sphere: Sphere) -> bool {
-
-    let x_s = sphere.center.x;
-    let y_s = sphere.center.y;
-    let z_s = sphere.center.z;
-
-    let x_l = line.x_0;
-    let x_m = line.x_m;
-    let y_l = line.y_0;
-    let y_m = line.y_m;
-
-    let r_2 = sphere.radius * sphere.radius;
-
-
-    let x = |z| { x_m * z + x_l };
-    let y = |z| { y_m * z + y_l };
-    let d = |z| { (x(z) - x_s) * (x(z) - x_s) + (y(z) - y_s) * (y(z) - y_s)  + (z - z_s) * (z - z_s) };
-
-    // distance_function
-    // d(z)   =       (x(z) - x_s)^2     +        (y(z) - y_s)^2  + (z - z_s)^2
-    // d'(z)  = 2*x_m*(x(z) - x_s)  +  2*y_m*(y(z) - y_s) + 2*(z - z_s)
-    // d''(z) = 2*x_m*x_m + 2*y_m*y_m + 2
-
-    // f(z)   = d(z) ^ (1/2)
-
-    // f'(z)  = d(z) ^ (-1/2) * d'(z)
-    //        = d'(z) / sqrt( d(z) )
-
-    // g(z)   = d(z) ^ (-1/2)
-
-    // f'(z)  = g(z) * d'(z)
-
-    // g'(z)  = (-1/2) * d(z) ^ (-3/2) * d'(z)
-
-    // f''(z) = g'(z) * d'(z) + d''(z) * g(z)
-
-    // Solve for
-    // f'(z) = 0 which is where d'(z) == 0 or where it is undefined which is where d(z) == 0
-
-    let z_v = (x_l - x_s + y_l - y_s - z_s) / (2.0*x_m*x_m + 2.0*y_m*y_m + 2.0);
-
-     // d(z) = (x_m^2+y_m^2 + 1) * z^2 + (2*(x_l - x_s + y_l - y_s - z_s)) * z + ((x_l-x_s)^2 + (y_l - y_s)^2 + z_s^2)
-    // d(z) = 0
-
-    // QUARDRATIC FORMULA!
-    // z   = (-b +/- sqrt( b^2 - 4ac)) / (2a)
-
-    let a = x_m*x_m+y_m*y_m + 1.0;
-    let b = 2.0*(x_l - x_s + y_l - y_s - z_s);
-    let c = (x_l-x_s) * (x_l-x_s) + (y_l - y_s) * (y_l - y_s) + z_s * z_s;
-
-    let desc = b*b - 4.0 * a * c;
-    if desc < 0.0 {
-        return  d(z_v) < r_2;
+impl std::fmt::Display for Sphere {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "< Sphere {{ Center: {} Radius: {}}} >", self.center, self.radius)
     }
+}
 
-    let q = desc.sqrt();
 
-    let z_n = (-b - q) / (2.0 * a);
-    let z_p = (-b + q) / (2.0 * a);
+pub fn does_line_intersect_sphere(l: Line, sphere: Sphere) -> bool {
 
-    return d(z_v) < r_2 || d(z_n) < r_2 || d(z_p) < r_2;
+    let b = l.b;
+    let m = l.m;
+
+    let r = sphere.radius;
+    let s = sphere.center;
+    let r_2 = r*r;
+
+    let x = |z| { m.x * z + b.x };
+    let y = |z| { m.y * z + b.y };
+    let d = |z| { (x(z) - s.x) * (x(z) - s.x) + (y(z) - s.y) * (y(z) - s.y)  + (z - s.z) * (z - s.z) };
+
+    // distance function
+    // d(z)   =       (x(z) - s.x)^2     +        (y(z) - s.y)^2  + (z - s.z)^2
+    // d'(z)  = 2*m.x*(x(z) - s.x)  +  2*m.y*(y(z) - s.y) + 2*(z - s.z)
+
+    // Solve for d'(z) = 0
+
+    // 0 = 2 * m.x * (m.x*z + b.x - s.x) +
+    //     2 * m.y * (m.y*z + b.y - s.y) +
+    //     2 * 1   * (1  *z + 0   - s.z)
+
+    // div 2
+
+    // 0 = m.x*m.x*z + m.x*b.x - m.x*s.x +
+    //     m.y*m.y*z + m.y*b.y - m.y*s.y +
+    //             z           -     s.z
+
+    // 0 = (m.x*m.x + m.y*m.y + 1) * z + ( m.x*b.x - m.x*s.x + m.y*b.y - m.y*s.y - s.z)
+    // 0 = (m.x*m.x + m.y*m.y + 1) * z - (-m.x*b.x + m.x*s.x - m.y*b.y + m.y*s.y + s.z)
+    // z = (-m.x*b.x + m.x*s.x -m.y*b.y + m.y*s.y + s.z) / (m.x*m.x + m.y*m.y + 1)
+
+    let z = (s.z - (m.x*b.x+m.y*b.y) + (m.x*s.x + m.y*s.y)) / (m.x*m.x + m.y*m.y + 1.0);
+    d(z) < r_2
 }
