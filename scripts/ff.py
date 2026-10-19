@@ -10,19 +10,23 @@ import numpy as np
 FF_MAGIC_BYTES = "farbfeld"
 FF_HEADER_LEN = len(FF_MAGIC_BYTES) + 4 + 4
 
-def convert_ff(file_path: str, output_path: str | None):
+def convert_ff(file_path: str, output_path: str | None = None):
 
     if output_path is None:
         output_path = os.path.splitext(file_path)[0] + ".ff"
 
     im = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
 
-    if len(im.shape) != 3:
+    if len(im.shape) == 1:
         # Image is grayscale
-        im = cv2.cvtColor(cv2.COLOR_GRAY2BGRA)
+        im = cv2.cvtColor(im, cv2.COLOR_GRAY2BGRA)
 
     elif im.shape[2] == 3:
-        im = cv2.cvtColor(cv2.COLOR_BGR2BGRA)
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2BGRA)
+
+    else:
+        print(f"Error: Unexpected image shape: {im.shape}")
+        return None
 
     h, w, c = im.shape[:3]
 
