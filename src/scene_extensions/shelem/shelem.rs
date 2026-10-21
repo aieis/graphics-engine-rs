@@ -8,7 +8,7 @@ use winit::keyboard::KeyCode;
 use crate::drawable::drawable_light_column::DrawableLightColumn;
 use crate::drawable::{drawable_card::DrawableCard, drawable_text::DrawableText};
 use crate::geometry::{
-    intersections::{self, Line, Sphere},
+    intersections::{self, Line, Sphere, Plane},
     vec3::Vec3,
 };
 
@@ -42,6 +42,9 @@ const CAMERA_ROTATION_SPEED_FAC: f32 = 0.5;
 const CAMERA_MOUSE_DRAG_SPEED: f32   = 0.2;
 
 const CARD_SIZE: Vec3 = Vec3::new(0.48, 0.02, 0.62);
+const CARD_BOUNDING_SPHERE: f32 = CARD_SIZE.mul(0.5).const_length(5);
+
+const USE_SPHERE_INTERSECTIONS: bool = false;
 
 struct SharedFontData {
     atlas: FontAtlas,
@@ -471,16 +474,23 @@ impl ShelemScene
                 let center = self.cards[idx].mesh.center;
                 let sphere  = Sphere {
                     center: Vec3::new(center.x, center.y, center.z - self.camera.params.location.z),
-                    radius: CARD_SIZE.x/2.0,
+                    radius: CARD_BOUNDING_SPHERE,
                 };
 
-                if intersections::does_line_intersect_sphere(line, sphere) {
+                // TODO: If a card's vertices were not so flexible (hint: they don't need to be) this could be provable
+                let front = Plane {
+                    v0: self.cards[idx].mesh.vertices[4],
+                    v1: self.cards[idx].mesh.vertices[5],
+                    v2: self.cards[idx].mesh.vertices[7],
+                };
+
+                if (USE_SPHERE_INTERSECTIONS && intersections::does_line_intersect_sphere(line, sphere))
+                    || (!USE_SPHERE_INTERSECTIONS && intersections::does_line_intersect_plane(line, front))
+                {
                     return Some(idx);
                 }
 
             }
-
-
         }
 
         None

@@ -29,6 +29,12 @@ impl std::fmt::Display for Sphere {
     }
 }
 
+pub struct Plane {
+    pub v0: Vec3,
+    pub v1: Vec3,
+    pub v2: Vec3
+}
+
 
 pub fn does_line_intersect_sphere(l: Line, sphere: Sphere) -> bool {
 
@@ -65,4 +71,48 @@ pub fn does_line_intersect_sphere(l: Line, sphere: Sphere) -> bool {
 
     let z = (s.z - (m.x*b.x+m.y*b.y) + (m.x*s.x + m.y*s.y)) / (m.x*m.x + m.y*m.y + 1.0);
     d(z) < r_2
+}
+
+pub fn does_line_intersect_plane(l: Line, plane: Plane) -> bool {
+    // The formula we are solving here
+    // t*d - a*u - b*v = v0 - o
+
+    // Important tricks here
+    // u*(cross(u,v)) = 0 where * is dot
+    // u*(cross(v,w)) = v*(cross(w,u))
+    // cross(u,v) = -cross(v,u)
+
+
+    let o  = Vec3 { x: l.b.x, y: l.b.y, z: 0.0 };
+    let d  = Vec3 { x: l.m.x, y: l.m.y, z: 1.0 };
+    let v0 = plane.v0;
+    let u  = plane.v1 - plane.v0;
+    let v  = plane.v2 - plane.v0;
+
+    let p = v0 - o;
+
+    let n = Vec3::cross(u, v);
+
+    // From formula above:
+    // t*d*n - a*u*n - b*v*n = p*n
+    // t = p*n / (d*n)
+
+    let f = Vec3::dot(d, n);
+    if f < 1.0e-4 {
+        return false;
+    }
+
+    // t*d*(d x v) - a*u*(d x v) - b*v*(d x v) = p*(d x v)
+    // a = -p*(d x v) / (u*(d x v)) =>
+    // a = -p*(d x v) / (d*(v x u)) =>
+    // a =  p*(d x v) / (d*(u x v))
+
+    let a = Vec3::dot(p, Vec3::cross(d,v)) / f;
+
+    // b = -p*(d x u) / (v*(d x u))
+    // b = -p*(d x u) / (d*(u x v))
+
+    let b = -Vec3::dot(p, Vec3::cross(d, u)) / f;
+
+    return a >= 0.0 && a <= 1.0 && b >= 0.0 && b <= 1.0;
 }

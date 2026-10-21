@@ -30,7 +30,7 @@ impl Vec3 {
     }
 
 
-    pub fn cross(a: Vec3, b: Vec3) -> Vec3 {
+    pub const fn cross(a: Vec3, b: Vec3) -> Vec3 {
         Self {
             x: a.y*b.z - a.z*b.y,
             y: a.z*b.x - a.x*b.z,
@@ -38,24 +38,39 @@ impl Vec3 {
         }
     }
 
-    pub fn dot(a: Vec3, b: Vec3) -> f32 {
+    pub const fn dot(a: Vec3, b: Vec3) -> f32 {
         a.x * b.x + a.y * b.y + a.z * b.z
     }
 
-    pub fn length(&self) -> f32 {
-        (self.x*self.x + self.y*self.y + self.z*self.z).sqrt()
-    }
-
-    pub fn xy(&self) -> Vec2 {
+    pub const fn xy(&self) -> Vec2 {
         Vec2::new(self.x, self.y)
     }
 
+    /// Because rust sucks and cannot let us use const operator overloading
+    /// TODO: one day...
+    pub const fn mul(&self, s: f32) -> Vec3 {
+        Vec3::new(self.x * s, self.y * s, self.z * s)
+    }
+
+    /// Because rust sucks and cannot let us use f32::sqrt in const
+    /// Can overflow...
+    /// TODO: one day...
+    pub const fn const_length(&self, significantish_digits: u32) -> f32 {
+        let p = 10_u128.pow(significantish_digits);
+        let v = (self.x*self.x + self.y*self.y + self.z*self.z);
+        (((v as f64 * p as f64 * p as f64) as i128).isqrt() as f64 / p as f64) as f32
+    }
 
     pub fn norm(v: Vec3) -> Vec3 {
         let l = v.length();
         let l = if l > 1e-6 { l } else { 1.0 };
         Self { x: v.x / l, y: v.y / l, z: v.z / l}
     }
+
+    pub fn length(&self) -> f32 {
+        (self.x*self.x + self.y*self.y + self.z*self.z).sqrt()
+    }
+
 }
 
 impl ops::Add<Vec3> for Vec3 {
