@@ -98,7 +98,7 @@ pub fn does_line_intersect_plane(l: Line, plane: Plane) -> bool {
     // t = p*n / (d*n)
 
     let f = Vec3::dot(d, n);
-    if f < 1.0e-4 {
+    if f.abs() < 1.0e-4 {
         return false;
     }
 
@@ -112,7 +112,7 @@ pub fn does_line_intersect_plane(l: Line, plane: Plane) -> bool {
     // b = -p*(d x u) / (v*(d x u))
     // b = -p*(d x u) / (d*(u x v))
 
-    let b = -Vec3::dot(p, Vec3::cross(d, u)) / f;
+    let b = -Vec3::dot(p, Vec3::cross(d,u)) / f;
 
     return a >= 0.0 && a <= 1.0 && b >= 0.0 && b <= 1.0;
 }

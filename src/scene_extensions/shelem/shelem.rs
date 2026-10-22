@@ -459,12 +459,6 @@ impl ShelemScene
             self.light_columns[0].params.point_a = self.camera.params.location + self.camera.params.direction * 2.0;
             self.light_columns[0].params.point_b = v * 3.0 + self.camera.params.location;
 
-            self.text_widgets[1].set_text(&format!("({:>6.2}, {:>6.2}) => {}", self.cursor_position.0, self.cursor_position.1, v));
-            self.text_widgets[1].kern_text(&self.font_data.atlas);
-            self.text_widgets[2].set_text(&format!("{} => {}", self.light_columns[0].params.point_a, self.light_columns[0].params.point_b));
-            self.text_widgets[2].kern_text(&self.font_data.atlas);
-
-
             let line = Line {
                 b: self.camera.params.location.xy(),
                 m: v.xy() * (1.0 / v.z)
@@ -472,16 +466,18 @@ impl ShelemScene
 
             for idx in 0..self.cards.len() {
                 let center = self.cards[idx].mesh.center;
+                let offset = Vec3::new(0.0, 0.0, -self.camera.params.location.z);
+
                 let sphere  = Sphere {
-                    center: Vec3::new(center.x, center.y, center.z - self.camera.params.location.z),
+                    center: center + offset,
                     radius: CARD_BOUNDING_SPHERE,
                 };
 
                 // TODO: If a card's vertices were not so flexible (hint: they don't need to be) this could be provable
                 let front = Plane {
-                    v0: self.cards[idx].mesh.vertices[4],
-                    v1: self.cards[idx].mesh.vertices[5],
-                    v2: self.cards[idx].mesh.vertices[7],
+                    v0: self.cards[idx].mesh.vertices[16] + offset,
+                    v1: self.cards[idx].mesh.vertices[17] + offset,
+                    v2: self.cards[idx].mesh.vertices[19] + offset,
                 };
 
                 if (USE_SPHERE_INTERSECTIONS && intersections::does_line_intersect_sphere(line, sphere))
@@ -491,6 +487,12 @@ impl ShelemScene
                 }
 
             }
+
+            self.text_widgets[1].set_text(&format!("({:>6.2}, {:>6.2}) => {}", self.cursor_position.0, self.cursor_position.1, v));
+            self.text_widgets[2].set_text(&format!("{} => {}", self.light_columns[0].params.point_a, self.light_columns[0].params.point_b));
+
+            self.text_widgets[1].kern_text(&self.font_data.atlas);
+            self.text_widgets[2].kern_text(&self.font_data.atlas);
         }
 
         None
