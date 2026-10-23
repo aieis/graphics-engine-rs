@@ -57,7 +57,7 @@ impl Vec3 {
     /// TODO: one day...
     pub const fn const_length(&self, significantish_digits: u32) -> f32 {
         let p = 10_u128.pow(significantish_digits);
-        let v = (self.x*self.x + self.y*self.y + self.z*self.z);
+        let v = self.x*self.x + self.y*self.y + self.z*self.z;
         (((v as f64 * p as f64 * p as f64) as i128).isqrt() as f64 / p as f64) as f32
     }
 

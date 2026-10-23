@@ -78,8 +78,6 @@ pub struct SimpleScene
 	previous_time: Instant,
 
     initialized: bool,
-
-    pub activated: bool,
 }
 
 impl SimpleScene
@@ -143,6 +141,10 @@ impl SimpleScene
         let camera_buffer = StaticUniform::<CameraParams>::new(allocator);
 
         let global_descriptor_set = VkBase::create_descriptor_sets(&base.device, base.descriptor_pool, base.global_descriptor_set_layout, base.max_in_flight);
+        for descriptor_set in global_descriptor_set.iter() {
+            VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&camera_buffer.uniform], 0);
+        }
+
 
         Self {
             time,
@@ -168,7 +170,6 @@ impl SimpleScene
             speed: CAMERA_MOVEMENT_SPEED,
             previous_time: Instant::now(),
             initialized: false,
-            activated: false,
         }
     }
 
@@ -370,16 +371,6 @@ impl SimpleScene
             self.initialized = true;
         }
 
-        if !self.activated {
-
-            for descriptor_set in self.global_descriptor_set.iter() {
-                VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&self.camera_buffer.uniform], 0);
-            }
-
-            self.activated = true;
-        }
-
-
 		let frame_time_ms = self.previous_time.elapsed().as_millis();
 		let frame_time = format!("{:>12} ", frame_time_ms);
 		self.frame_timer[0].set_text(&frame_time);
@@ -390,10 +381,6 @@ impl SimpleScene
     }
 
     pub fn draw(&mut self, base: &mut VkBase, cb: vk::CommandBuffer, current_image: usize) {
-        if !self.activated {
-            return;
-        }
-
         Drawable2d::draw(&base.device, cb, &base.graphics_pipelines[ShaderRect::ID], &self.rect_bundles);
 
         let pso = &base.graphics_pipelines[ShaderSpecialMesh::ID];

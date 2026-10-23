@@ -21,6 +21,7 @@ pub struct CameraParams {
     pub location: Vec3,
     pub direction: Vec3,
     pub up: Vec3,
+    pub right: Vec3,
     pub view: Mat4,
     pub projection: Mat4
 }
@@ -48,8 +49,6 @@ pub struct Camera {
     y_angle: f32,
     y_sin: f32,
     y_cos: f32,
-
-    right: Vec3,
 
     width: f32,
     height: f32,
@@ -81,6 +80,7 @@ impl Camera {
             location,
             direction,
             up,
+            right,
             view: Mat4::transpose(view),
             projection
         };
@@ -95,7 +95,6 @@ impl Camera {
 
         Self {
             params,
-            right,
             x_angle,
             x_sin,
             x_cos,
@@ -114,8 +113,8 @@ impl Camera {
 
     pub fn update(&mut self, action: CameraAction, delta: f32) {
         match action {
-            CameraAction::Right => self.params.location += delta * self.right,
-            CameraAction::Left => self.params.location -= delta * self.right,
+            CameraAction::Right => self.params.location += delta * self.params.right,
+            CameraAction::Left => self.params.location -= delta * self.params.right,
             CameraAction::Up => self.params.location += delta * self.params.up,
             CameraAction::Down => self.params.location -= delta * self.params.up,
             CameraAction::Forward =>  self.params.location += delta * self.params.direction,
@@ -126,7 +125,7 @@ impl Camera {
                 self.x_cos = self.x_angle.cos();
 
                 self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
-                self.right = Self::calc_right(self.params.direction);
+                self.params.right = Self::calc_right(self.params.direction);
             },
 
             CameraAction::RotateY => {
@@ -136,7 +135,7 @@ impl Camera {
                 self.y_cos = self.y_angle.cos();
 
                 self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
-                self.right = Self::calc_right(self.params.direction);
+                self.params.right = Self::calc_right(self.params.direction);
 
             },
 
@@ -146,7 +145,7 @@ impl Camera {
                 self.x_sin = self.x_angle.sin();
                 self.x_cos = self.x_angle.cos();
                 self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
-                self.right = Self::calc_right(self.params.direction);
+                self.params.right = Self::calc_right(self.params.direction);
             },
 
             CameraAction::SnapDirY => {
@@ -156,11 +155,11 @@ impl Camera {
                 self.y_sin = self.y_angle.sin();
                 self.y_cos = self.y_angle.cos();
                 self.params.direction = Self::calc_direction(self.x_sin, self.x_cos, self.y_sin, self.y_cos);
-                self.right = Self::calc_right(self.params.direction);
+                self.params.right = Self::calc_right(self.params.direction);
             }
 
             CameraAction::SnapPosX => {
-                self.params.location  += delta * self.right;
+                self.params.location  += delta * self.params.right;
                 self.params.location.x = round_to_nearest(self.params.location.x, delta);
             }
 

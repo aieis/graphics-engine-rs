@@ -43,20 +43,20 @@ const int CircleTris = N;
 
 const int TotalVertices = (CircleTris * 2 + 2 * 2) * 3;
 
-vec3 get_v_pos_circle_offset(int tri_idx, int tri_v_idx, bool rotate) {
+vec3 get_v_pos_circle_offset(int tri_idx, int tri_v_idx, bool rotate, vec3 up, vec3 right) {
     if (tri_v_idx == 0) {
         return vec3(0, 0, 0);
     }
 
     int v = tri_idx + tri_v_idx - 1;
     if (rotate) {
-        float x = Radius * cos(2 * PI - v * DeltaTheta);
-        float y = Radius * sin(2 * PI - v * DeltaTheta);
-        return vec3(x, y, 0);
+        vec3 x = Radius * cos(2 * PI - v * DeltaTheta) * right;
+        vec3 y = Radius * sin(2 * PI - v * DeltaTheta) * up;
+        return x + y;
     } else {
-        float x = Radius * cos(v * DeltaTheta);
-        float y = Radius * sin(v * DeltaTheta);
-        return vec3(x, y, 0);
+        vec3 x = Radius * cos(v * DeltaTheta) * right;
+        vec3 y = Radius * sin(v * DeltaTheta) * up;
+        return x + y;
     }
 
 }
@@ -82,7 +82,7 @@ void main() {
         int tri_v_idx = (v % 3);
 
         bool rotate = true;
-        vec3 v_pos = get_v_pos_circle_offset(tri_idx, tri_v_idx, rotate);
+        vec3 v_pos = get_v_pos_circle_offset(tri_idx, tri_v_idx, rotate, G.CamUp, G.CamRight);
 
         pos = vec4(v_pos + P.PointA, 1.0);
 
@@ -97,7 +97,7 @@ void main() {
         int tri_v_idx = (v % 3);
 
         bool rotate = true;
-        vec3 v_pos = get_v_pos_circle_offset(tri_idx, tri_v_idx, rotate);
+        vec3 v_pos = get_v_pos_circle_offset(tri_idx, tri_v_idx, rotate, G.CamUp, G.CamRight);
 
         pos = vec4(v_pos + P.PointB, 1.0);
         dist = length(v_pos) / Radius;

@@ -364,16 +364,13 @@ impl App {
 
                     KeyCode::F1 => {
                         self.target_scene = TargetScene::Empty;
-                        self.simple_scene.activated = false;
                     }
 
                     KeyCode::F2 => {
                         self.target_scene = TargetScene::Demo;
-                        self.simple_scene.activated = false;
                     }
 
                     KeyCode::F3 => {
-                        self.simple_scene.activated = self.target_scene != TargetScene::Simple;
                         self.target_scene = TargetScene::Simple;
                     }
 
