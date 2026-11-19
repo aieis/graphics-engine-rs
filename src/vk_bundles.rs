@@ -37,6 +37,7 @@ pub struct PipelineDescriptor {
     pub vertex_bindings: Vec<vk::VertexInputBindingDescription>,
     pub vertex_attributes: Vec<vk::VertexInputAttributeDescription>,
     pub push_constants: Option<vk::PushConstantRange>,
+    pub topology: vk::PrimitiveTopology,
     pub cull_mode: vk::CullModeFlags,
 }
 

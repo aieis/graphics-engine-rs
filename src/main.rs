@@ -16,11 +16,7 @@ mod components;
 use std::time::{Duration, Instant};
 
 use scene_extensions::{
-    demo_scene::DemoScene,
-    simple_scene::SimpleScene,
-    text_scene::TextScene,
-    shelem::ShelemScene,
-    global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING
+    demo_scene::DemoScene, global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING, point_cloud_inspector::PclScene, shelem::ShelemScene, simple_scene::SimpleScene, text_scene::TextScene
 };
 
 use utils::keyboard_mouse::KeyboardMouseState;
@@ -44,6 +40,7 @@ enum TargetScene {
     Simple,
     Text,
     Shelem,
+    Pcl,
     Empty
 }
 
@@ -57,6 +54,7 @@ struct App {
     simple_scene: SimpleScene,
     text_scene: TextScene,
     shelem_scene: ShelemScene,
+    pcl_scene: PclScene,
 
     close: bool,
 
@@ -80,11 +78,13 @@ impl App {
         let base = VkBase::new(window, 3, "./assets/shaders", GLOBAL_DESCRIPTOR_SET_BINDING.clone());
 
         let mut allocator = Allocator::new(&base, AllocatorSizeInfo {
-            staging: 20*1024,
-            device_vertex: 10*1024,
+            staging: 10*1024*1024,
+            device_vertex: 10*1024*1024,
             device_index: 10*1024,
             uniform_buffer: 20*1024,
         });
+
+        let cb = begin_single_time_command(&base.device, base.spare_command.pool);
 
         let current_time = Instant::now();
         let delta_time   = 16.0e-3;
@@ -94,10 +94,14 @@ impl App {
         let demo_scene = DemoScene::new(&base);
         let simple_scene = SimpleScene::new(&base, &mut allocator);
         let text_scene = TextScene::new(&base, &mut allocator);
-        let mut shelem_scene = ShelemScene::new(&base, &mut allocator);
 
-        let cb = begin_single_time_command(&base.device, base.spare_command.pool);
+        let mut shelem_scene = ShelemScene::new(&base, &mut allocator);
         shelem_scene.initialize_scene(&base, cb);
+
+        let mut pcl_scene = PclScene::new(&base, &mut allocator);
+        pcl_scene.initialize_scene(&base, cb);
+
+
         end_single_time_command(&base.device, base.spare_command.pool, base.device.present_queue, cb);
 
         Self {
@@ -107,6 +111,7 @@ impl App {
             demo_scene,
             simple_scene,
             shelem_scene,
+            pcl_scene,
 
             allocator,
 
@@ -148,6 +153,10 @@ impl App {
         }
 
         match self.target_scene {
+            TargetScene::Empty => {
+                // Do nothing
+            }
+
             TargetScene::Demo => {
                 self.demo_scene.update(&self.base, cb, self.delta_time);
             }
@@ -166,9 +175,10 @@ impl App {
                 self.shelem_scene.update(&self.base, cb, &self.keyboard_state, self.delta_time);
             }
 
-            TargetScene::Empty => {
-                // Do nothing
-            },
+            TargetScene::Pcl => {
+                self.pcl_scene.update(&self.base, cb, &self.keyboard_state, self.delta_time);
+            }
+
         }
 
         unsafe { self.base.device.logical.end_command_buffer(cb).unwrap(); }
@@ -200,6 +210,10 @@ impl App {
         };
 
         match self.target_scene {
+            TargetScene::Empty => {
+                // Do nothing
+            }
+
             TargetScene::Demo => {
                 self.demo_scene.draw(&self.base, cb);
             }
@@ -218,10 +232,10 @@ impl App {
                 let current_frame = self.base.current_frame;
                 self.shelem_scene.draw(&mut self.base, cb, current_frame);
             }
-
-            TargetScene::Empty => {
-                // Do nothing
-            },
+            TargetScene::Pcl => {
+                let current_frame = self.base.current_frame;
+                self.pcl_scene.draw(&mut self.base, cb, current_frame);
+            }
         }
 
         self.base.render(&cb, image_index);
@@ -238,6 +252,10 @@ impl App {
 
                     TargetScene::Shelem => {
                         self.shelem_scene.handle_mouse_motion(delta, &self.keyboard_state);
+                    },
+
+                    TargetScene::Pcl => {
+                        self.pcl_scene.handle_mouse_motion(delta, &self.keyboard_state);
                     },
 
                     _ => {
@@ -292,6 +310,9 @@ impl App {
                 self.shelem_scene.handle_cursor_moved((position.x, position.y));
             },
 
+            TargetScene::Pcl => {
+                self.pcl_scene.handle_cursor_moved((position.x, position.y));
+            },
 
             _ => {
                 // noting to do
@@ -305,6 +326,9 @@ impl App {
                 self.shelem_scene.handle_resize_event((window_size.width, window_size.height));
             },
 
+            TargetScene::Pcl => {
+                self.pcl_scene.handle_resize_event((window_size.width, window_size.height));
+            },
 
             _ => {
                 // noting to do
@@ -322,6 +346,10 @@ impl App {
 
             TargetScene::Shelem => {
                 self.shelem_scene.handle_mouse_button_event(state, button);
+            },
+
+            TargetScene::Pcl => {
+                self.pcl_scene.handle_mouse_button_event(state, button);
             },
 
 
@@ -351,6 +379,9 @@ impl App {
                         self.shelem_scene.handle_key(a, event.state, event.repeat, &self.keyboard_state);
                     }
 
+                    TargetScene::Pcl => {
+                        self.pcl_scene.handle_key(a, event.state, event.repeat, &self.keyboard_state);
+                    }
 
                     _ => {
                         // noting to do
@@ -380,6 +411,10 @@ impl App {
 
                     KeyCode::F5 => {
                         self.target_scene = TargetScene::Shelem;
+                    }
+
+                    KeyCode::F6 => {
+                        self.target_scene = TargetScene::Pcl;
                     }
 
 
@@ -418,6 +453,7 @@ impl Drop for App {
             self.simple_scene.release(&self.base);
             self.text_scene.release(&self.base);
             self.shelem_scene.release(&self.base);
+            self.pcl_scene.release(&self.base);
             self.allocator.release(&self.base.device);
         }
     }

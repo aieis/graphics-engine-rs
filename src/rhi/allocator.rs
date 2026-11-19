@@ -116,7 +116,7 @@ impl Allocator {
         };
 
         if heap.offset + size >= heap.size {
-            return Err(format!("Allocator: Requested {} bytes from heap of size {} with {} remaining", size, heap.size, heap.size - heap.offset));
+            return Err(format!("Allocator: Requested {} bytes from heap '{:?}' of size {} with {} remaining", size, buffer_type, heap.size, heap.size - heap.offset));
         }
 
         let bundle = BufferBundle {

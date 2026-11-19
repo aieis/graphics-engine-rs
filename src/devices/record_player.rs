@@ -7,8 +7,6 @@ pub struct RecordData {
     pub height: u32,
     pub frame_count: usize,
 
-    // TODO: Deal with projection data
-    #[allow(unused)]
     pub projection_data: Vec<f32>,
 
     pub frame_data: Vec<u16>,

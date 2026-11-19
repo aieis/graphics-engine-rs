@@ -617,7 +617,7 @@ impl VkBase {
             .vertex_attribute_descriptions(&pipeline_desc.vertex_attributes);
 
         let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo::default()
-            .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
+            .topology(pipeline_desc.topology)
             .primitive_restart_enable(false);
 
         let viewports = [vk::Viewport {

@@ -58,6 +58,7 @@ impl ShaderMesh  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
             cull_mode: vk::CullModeFlags::BACK,
         }
     }
@@ -118,6 +119,7 @@ impl ShaderSpecialMesh  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
             cull_mode: vk::CullModeFlags::BACK,
         }
     }
@@ -186,10 +188,13 @@ impl ShaderCard  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants,
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
             cull_mode: vk::CullModeFlags::BACK,
         }
     }
 }
+
+
 
 #[allow(nonstandard_style)]
 pub struct ShaderLightColumn_Params {
@@ -221,6 +226,65 @@ impl ShaderLightColumn  {
             vertex_bindings,
             vertex_attributes,
 	        push_constants,
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
+            cull_mode: vk::CullModeFlags::NONE,
+        }
+    }
+}
+
+
+
+#[register_shader("pcl")]
+pub struct ShaderPcl { }
+
+impl ShaderPcl {
+    const GLOBAL_UNIFORMS: bool = true;
+
+    pub fn pipeline_descriptor() -> PipelineDescriptor {
+        let ubo_layout_bindings = vec![];
+
+     let vertex_bindings = vec![
+            vk::VertexInputBindingDescription::default()
+                .binding(0)
+                .stride(std::mem::size_of::<[f32; 3]>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+
+            vk::VertexInputBindingDescription::default()
+                .binding(1)
+                .stride(std::mem::size_of::<[f32; 3]>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX),
+
+            vk::VertexInputBindingDescription::default()
+                .binding(2)
+                .stride(std::mem::size_of::<f32>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX)
+        ];
+
+        let vertex_attributes = vec![
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32G32B32_SFLOAT),
+
+            vk::VertexInputAttributeDescription::default()
+                .binding(1)
+                .location(1)
+                .format(vk::Format::R32G32B32_SFLOAT),
+
+            vk::VertexInputAttributeDescription::default()
+                .binding(2)
+                .location(2)
+                .format(vk::Format::R32_SFLOAT),
+        ];
+
+        let push_constants = None;
+
+        PipelineDescriptor {
+            ubo_layout_bindings,
+            vertex_bindings,
+            vertex_attributes,
+	        push_constants,
+            topology: vk::PrimitiveTopology::POINT_LIST,
             cull_mode: vk::CullModeFlags::NONE,
         }
     }
@@ -262,6 +326,7 @@ impl ShaderRect {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
             cull_mode: vk::CullModeFlags::BACK,
         }
     }
@@ -310,7 +375,8 @@ impl ShaderTexture {
             ubo_layout_bindings,
             vertex_bindings,
             vertex_attributes,
-	        push_constants: None,
+	        topology: vk::PrimitiveTopology::TRIANGLE_LIST,
+            push_constants: None,
             cull_mode: vk::CullModeFlags::BACK,
         }
     }
@@ -369,6 +435,7 @@ impl ShaderText {
             vertex_bindings,
             vertex_attributes,
 	        push_constants: None,
+            topology: vk::PrimitiveTopology::TRIANGLE_LIST,
             cull_mode: vk::CullModeFlags::BACK,
         }
     }
