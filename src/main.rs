@@ -16,7 +16,7 @@ mod components;
 use std::time::{Duration, Instant};
 
 use scene_extensions::{
-    demo_scene::DemoScene, global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING, point_cloud_inspector::PclScene, shelem::ShelemScene, simple_scene::SimpleScene, text_scene::TextScene
+    demo_scene::DemoScene, global_descriptor::GLOBAL_DESCRIPTOR_SET_BINDING, pcl_inspector::PclScene, shelem::ShelemScene, simple_scene::SimpleScene, text_scene::TextScene
 };
 
 use utils::keyboard_mouse::KeyboardMouseState;

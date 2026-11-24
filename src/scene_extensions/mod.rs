@@ -4,4 +4,4 @@ pub mod demo_scene;
 pub mod global_descriptor;
 
 pub mod shelem;
-pub mod point_cloud_inspector;
+pub mod pcl_inspector;

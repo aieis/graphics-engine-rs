@@ -24,8 +24,8 @@ use crate::utils::{
 use crate::vk_base::VkBase;
 use crate::vk_bundles::TextureBundle;
 
-macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas.ff" }; }
-macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas_desc.bin" }; }
+macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas.ff" }; }
+macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas_desc.bin" }; }
 
 const FONT_ATLAS_DATA: &[u8] = include_bytes!(FONT_ATLAS_PATH_MAC!());
 const FONT_ATLAS_DESC_DATA: &[u8] = include_bytes!(FONT_ATLAS_DESC_PATH_MAC!());
@@ -99,7 +99,7 @@ impl PclScene
             VkBase::update_descriptor_set_buffers(&base.device, *descriptor_set, &[&camera_buffer.uniform], 0);
         }
 
-        let video_device = RecordPlayer::from_buffer(include_bytes!("../../assets/recordings/record1.rdbin")).unwrap();
+        let video_device = RecordPlayer::from_buffer(include_bytes!("../../../assets/recordings/record1.rdbin")).unwrap();
 
         let pcl = [
             DrawablePcl::new(allocator, (video_device.record_data.height * video_device.record_data.width) as usize)
