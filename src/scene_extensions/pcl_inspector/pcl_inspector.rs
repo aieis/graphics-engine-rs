@@ -15,7 +15,7 @@ use crate::geometry::{
 use crate::primitives::image::PixelFormat;
 use crate::rhi::{allocator::Allocator, uniform::StaticUniform, uniform::VariableUniform};
 use crate::scene::camera::{Camera, CameraParams, CameraAction};
-use crate::shader::{ShaderCard, ShaderPcl, ShaderText};
+use crate::shader::{ShaderPcl, ShaderText};
 use crate::utils::{
     image::{ImageLayout_ShaderReadOnlyOptimal, ImageLayout_TransferDstOptimal, ImageLayout_Undefined},
     keyboard_mouse::{KeyboardMouseState, KeyMod}
