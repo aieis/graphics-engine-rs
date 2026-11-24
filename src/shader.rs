@@ -251,7 +251,7 @@ impl ShaderPcl {
 
             vk::VertexInputBindingDescription::default()
                 .binding(1)
-                .stride(std::mem::size_of::<[f32; 3]>() as u32)
+                .stride(std::mem::size_of::<u32>() as u32)
                 .input_rate(vk::VertexInputRate::VERTEX),
 
             vk::VertexInputBindingDescription::default()
@@ -269,7 +269,7 @@ impl ShaderPcl {
             vk::VertexInputAttributeDescription::default()
                 .binding(1)
                 .location(1)
-                .format(vk::Format::R32G32B32_SFLOAT),
+                .format(vk::Format::R32_UINT),
 
             vk::VertexInputAttributeDescription::default()
                 .binding(2)

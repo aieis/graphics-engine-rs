@@ -44,7 +44,7 @@ enum TargetScene {
     Empty
 }
 
-const STARTING_SCENE: TargetScene = TargetScene::Shelem;
+const STARTING_SCENE: TargetScene = TargetScene::Pcl;
 
 struct App {
     base: VkBase,

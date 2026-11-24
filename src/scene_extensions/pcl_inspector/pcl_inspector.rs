@@ -24,6 +24,8 @@ use crate::utils::{
 use crate::vk_base::VkBase;
 use crate::vk_bundles::TextureBundle;
 
+use super::pcl_obj_detector::PclDetector;
+
 macro_rules! FONT_ATLAS_PATH_MAC { () => { "../../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas.ff" }; }
 macro_rules! FONT_ATLAS_DESC_PATH_MAC { () => { "../../../assets/fonts/Atlas_Iosevka_Regular_12x8_25x55_atlas_desc.bin" }; }
 
@@ -38,6 +40,8 @@ const CAMERA_FOV         : f32  = std::f32::consts::PI / 3.0;
 const CAMERA_MOVEMENT_SPEED: f32     = 5.0;
 const CAMERA_ROTATION_SPEED_FAC: f32 = 0.5;
 const CAMERA_MOUSE_DRAG_SPEED: f32   = 0.2;
+
+const DETECTOR_SEED_COUNT: usize = 64;
 
 struct SharedFontData {
     atlas: FontAtlas,
@@ -60,13 +64,14 @@ pub struct PclScene
     font_data: SharedFontData,
 
     video_device: RecordPlayer,
+    depth_frame: Vec<u16>,
+    detector: PclDetector,
 
 
     window_size: (u32, u32),
     cursor_delta: (f64, f64),
     cursor_position: (f32, f32),
     cursor_moved: bool,
-    fixed_camera: bool,
 
     speed: f32,
 	previous_time: Instant,
@@ -105,6 +110,10 @@ impl PclScene
             DrawablePcl::new(allocator, (video_device.record_data.height * video_device.record_data.width) as usize)
         ];
 
+        let depth_frame = video_device.record_data.get_frame(video_device.stream_pos);
+        let mut detector = PclDetector::new(video_device.record_data.width as usize, video_device.record_data.height as usize);
+        detector.seed(DETECTOR_SEED_COUNT, &depth_frame);
+
         Self {
             text_widgets,
             global_descriptor_set,
@@ -119,11 +128,12 @@ impl PclScene
             cursor_delta: (0.0, 0.0),
             cursor_position: (0.0, 0.0),
             cursor_moved: false,
-            fixed_camera: true,
             previous_time: Instant::now(),
 
             pcl,
             video_device,
+            depth_frame,
+            detector,
         }
     }
 
@@ -145,8 +155,7 @@ impl PclScene
         crate::utils::image::transition_image_layout::<ImageLayout_TransferDstOptimal, ImageLayout_ShaderReadOnlyOptimal>(&base.device, cb, &self.font_data.atlas_texture);
 
 
-        let col = vec![1.0; (self.video_device.record_data.height * self.video_device.record_data.width * 3) as usize];
-        self.pcl[0].init(&base.device, cb, &self.video_device.record_data.projection_data, &col);
+        self.pcl[0].init(&base.device, cb, &self.video_device.record_data.projection_data, &self.detector.all_ray_objs);
     }
 
     pub fn handle_cursor_moved(&mut self, position: (f64, f64)) {
@@ -191,27 +200,8 @@ impl PclScene
         }
 
         // Decide if to skp all the camera options or not
-        if self.fixed_camera {
-
-            if keyboard_state.is_mod_req_met(KeyMod::None) && key == KeyCode::KeyO {
-                self.fixed_camera = false;
-            }
-
-            return;
-        }
-
         if keyboard_state.is_mod_req_met(KeyMod::None) {
             match key {
-                KeyCode::KeyO => {
-
-                    if self.fixed_camera {
-                        self.fixed_camera = false;
-                    } else {
-                        self.fixed_camera = true;
-                        self.reset_camera();
-                    }
-
-                }
 
                 KeyCode::KeyT => {
                     self.reset_camera();
@@ -256,11 +246,6 @@ impl PclScene
     fn handle_down_keys(&mut self, keyboard_state: &KeyboardMouseState, delta_time: f32) {
 
         // camera
-
-        if self.fixed_camera {
-            return;
-        }
-
 
         if keyboard_state.is_mod_req_met(KeyMod::None) {
             if keyboard_state[KeyCode::KeyA] {
@@ -332,8 +317,12 @@ impl PclScene
 
 
         if let Some(new_frame) = self.video_device.poll() {
-            self.pcl[0].update(&base.device, cb, unsafe { new_frame.align_to::<u16>().1});
+            self.depth_frame = unsafe { new_frame.align_to::<u16>().1 }.to_vec();
+            self.pcl[0].update(&base.device, cb, &self.depth_frame);
         }
+
+        self.detector.iterate(&self.depth_frame);
+        self.pcl[0].update_col(&base.device, cb, &self.detector.all_ray_objs);
 
 		DrawableText::update(&base.device, cb, &mut self.text_widgets, 1024.0, aspect_ratio);
     }

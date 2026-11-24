@@ -16,6 +16,12 @@ In my emacs configuration:
 	C-c d (aieis/vk-compile-dir)
 
 
+# Levels
+
+There are a couple of levels here. Highlights are the Pcl level which demonstrates iterative segmentation on point clouds.
+
+
+
 # References
 
 - Original:

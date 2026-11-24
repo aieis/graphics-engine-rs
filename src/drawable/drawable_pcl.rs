@@ -22,7 +22,7 @@ impl DrawablePcl {
         let internal_data = vec![0.0; count as usize];
 
         let proj = VariableDeviceBuffer::new(allocator, count as u64 * std::mem::size_of::<f32>() as u64 * 3, BufferType::DeviceVertex);
-        let col  = VariableDeviceBuffer::new(allocator, count as u64 * std::mem::size_of::<f32>() as u64 * 3, BufferType::DeviceVertex);
+        let col  = VariableDeviceBuffer::new(allocator, count as u64 * std::mem::size_of::<u32>() as u64, BufferType::DeviceVertex);
         let dist = VariableDeviceBuffer::new(allocator, count as u64 * std::mem::size_of::<f32>() as u64, BufferType::DeviceVertex);
 
 
@@ -35,9 +35,9 @@ impl DrawablePcl {
         }
     }
 
-    pub fn init(&mut self, device: &DeviceBundle, cb: vk::CommandBuffer, proj_data: &[f32], col_data: &[f32]) {
+    pub fn init(&mut self, device: &DeviceBundle, cb: vk::CommandBuffer, proj_data: &[f32], col_data: &[u32]) {
 
-        if proj_data.len() != self.count * 3 || col_data.len() != self.count * 3 {
+        if proj_data.len() != self.count * 3 || col_data.len() != self.count {
             eprintln!("DarawablePcl: Could not initialize data.");
             dbg!(proj_data.len());
             dbg!(col_data.len());
@@ -46,6 +46,16 @@ impl DrawablePcl {
         }
 
         self.proj.update(device, cb, proj_data);
+        self.col.update(device, cb, col_data);
+    }
+
+    pub fn update_col(&mut self, device: &DeviceBundle, cb: vk::CommandBuffer, col_data: &[u32]) {
+
+        if col_data.len() != self.count {
+            eprintln!("DrawablePcl: Colour data does not match expected. Expected len {} got {}", self.count, col_data.len());
+            return;
+        }
+
         self.col.update(device, cb, col_data);
     }
 
