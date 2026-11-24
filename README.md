@@ -20,6 +20,8 @@ In my emacs configuration:
 
 There are a couple of levels here. Highlights are the Pcl level which demonstrates iterative segmentation on point clouds.
 
+![Pcl iterative segmentation](docs/pcl-iterative-segmentation.png)
+
 
 
 # References
